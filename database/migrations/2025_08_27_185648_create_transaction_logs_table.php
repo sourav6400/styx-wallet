@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('logs', function (Blueprint $table) {
+        Schema::create('transaction_logs', function (Blueprint $table) {
             $table->id();
             $table->integer('wallet_id')->nullable();
             $table->string('type')->nullable();
@@ -31,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('logs');
+        Schema::dropIfExists('transaction_logs');
     }
 };

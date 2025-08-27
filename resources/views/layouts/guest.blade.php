@@ -11,7 +11,7 @@
     <meta name="designer" content="">
 
     <!-- Title -->
-    <title>STYX Wallet</title>
+    <title>{{$title}} - STYX</title>
 
     <!-- Fav Icon -->
     <link rel="icon" href="{{ asset('images/favicon.ico') }}">

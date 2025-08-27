@@ -30,6 +30,165 @@
 
     <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 
+
+    <style>
+        /* Minimal Preloader Styles */
+        .cw-preloader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(27, 29, 45, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 5s ease, visibility 0.5s ease;
+        }
+
+        .cw-preloader-overlay.cw-fade-out {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .cw-preloader-container {
+            text-align: center;
+            position: relative;
+        }
+
+        .cw-preloader-title {
+            font-weight: 700;
+            font-size: 30px;
+            background: linear-gradient(90deg, #2447F9, #8A52FE);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            /* Safari/iOS */
+            margin-bottom: 30px;
+            opacity: 0;
+            animation: cwFadeInTitle 0.8s ease forwards 0.2s;
+        }
+
+        .cw-dots-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .cw-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: linear-gradient(90deg, #2447F9, #8A52FE);
+            animation: cwPulse 1.5s infinite ease-in-out;
+        }
+
+        .cw-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .cw-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .cw-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        .cw-loading-text {
+            font-size: 0.9rem;
+            color: #fff;
+            opacity: 0;
+            animation: cwFadeInText 1s ease forwards 0.5s;
+        }
+
+        .cw-progress-bar {
+            width: 200px;
+            height: 2px;
+            background: #fff;
+            border-radius: 1px;
+            margin: 20px auto 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .cw-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2447F9, #8A52FE);
+            border-radius: 1px;
+            animation: cwProgress 3s ease-in-out forwards;
+            /* ✅ from 2nd style */
+        }
+
+        .preloader_logo {
+            width: 100%;
+            max-width: 100px;
+            margin-bottom: 20px;
+        }
+
+        /* Animations */
+        @keyframes cwPulse {
+
+            0%,
+            20% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: scale(1.3);
+                opacity: 1;
+            }
+
+            80%,
+            100% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes cwFadeInTitle {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes cwFadeInText {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes cwProgress {
+            0% {
+                width: 0%;
+            }
+
+            50% {
+                width: 70%;
+            }
+
+            100% {
+                width: 100%;
+            }
+        }
+    </style>
+
 </head>
 
 <body>
@@ -147,6 +306,28 @@
                             </div>
                         </div>
 
+                        <!-- Loader -->
+                        <div id="loader">
+                            {{-- <div class="spinner"></div> --}}
+                            <!-- Unique Preloader -->
+                            <div class="cw-preloader-overlay" id="cwPreloader">
+                                <div class="cw-preloader-container">
+                                    <!-- <div class="cw-preloader-title">Crypto Wallet</div> -->
+                                    <img class="cw-preloader-title d-block mx-auto" src="./images/logo/logo_main.svg"
+                                        alt="">
+                                    <div class="cw-dots-container">
+                                        <div class="cw-dot"></div>
+                                        <div class="cw-dot"></div>
+                                        <div class="cw-dot"></div>
+                                    </div>
+                                    <div class="cw-loading-text">Loading your secure wallet...</div>
+                                    <div class="cw-progress-bar">
+                                        <div class="cw-progress-fill"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {{-- Main Content --}}
                         <div class="page_content">
                             @yield('content')
@@ -237,6 +418,11 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
     <script>
+        window.addEventListener("load", function() {
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("content").style.display = "block";
+        });
+
         $(document).ready(function() {
             $('#dataTable').DataTable();
             $('#dataTable_filter input').attr('placeholder', 'Search here...');
@@ -292,7 +478,7 @@
         //     }
         // });
 
-        
+
         // (function() {
         //     const LOCK_KEY = 'app.locked';
 

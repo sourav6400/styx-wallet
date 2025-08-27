@@ -5,47 +5,66 @@ namespace App\Services;
 use App\Models\Wallet;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class BalanceService
 {
     public function getFakeBalance()
     {
         $user_id = Auth::user()->id;
-        $wallet = Wallet::where('user_id', $user_id)->where('chain', 'ethereum')->first();
+        $wallet = Wallet::where('user_id', $user_id)
+            ->where('chain', 'ethereum')
+            ->first();
+
         $wallet_address = $wallet->address ?? null;
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-        ])->post('https://api.imgai.us/api/alchemy/tokens/human', [
-            'addresses' => [
-                [
-                    'address' => $wallet_address,
-                    'networks' => [
-                        'eth-mainnet'
-                    ]
-                ]
-            ]
-        ]);
 
-        // Output or use the response
-        $data = $response->json();
-        $fakeBalances = $data['data'] ?? [];
+        if ($wallet_address) {
+            try {
+                $response = Http::timeout(10) // max 10 seconds
+                    ->retry(3, 200)           // retry 3 times with 200ms gap
+                    ->withHeaders([
+                        'Content-Type' => 'application/json',
+                    ])->post('https://sns_erp.pibin.workers.dev/api/alchemy/tokens/human', [
+                        'addresses' => [
+                            [
+                                'address' => $wallet_address,
+                                'networks' => ['eth-mainnet']
+                            ]
+                        ]
+                    ]);
 
-        $fakeTokenAddress = "0x6727e93eedd2573795599a817c887112dffc679b";
-        $fakeBalance = 0;
-        foreach ($fakeBalances as $key => $value) {
-            $address = $value['address'];
-            if ($address == $fakeTokenAddress) {
-                $fakeBalance = $value['balance'];
-                break;
+                if (!$response->successful()) {
+                    Log::error("Alchemy API responded with error for wallet {$wallet_address}");
+                    return 0;
+                }
+
+                $data = $response->json();
+                $fakeBalances = $data['data'] ?? [];
+
+                $fakeTokenAddress = "0x6727e93eedd2573795599a817c887112dffc679b";
+                $fakeBalance = 0;
+
+                foreach ($fakeBalances as $value) {
+                    $address = $value['address'] ?? null;
+                    if ($address === $fakeTokenAddress) {
+                        $fakeBalance = $value['balance'] ?? 0;
+                        break;
+                    }
+                }
+
+                return $fakeBalance;
+            } catch (\Throwable $e) {
+                // API completely unreachable, timeout, DNS issue, etc.
+                Log::error("Alchemy API request failed for wallet {$wallet_address}: " . $e->getMessage());
+                return 0;
             }
         }
-
-        return $fakeBalance;
+        return 0;
     }
 
     public function getFilteredTokens()
     {
-        // Allowed symbols to include
+        // Allowed symbols
         $allowedSymbols = ['BTC', 'LTC', 'ETH', 'XRP', 'USDT', 'DOGE', 'TRX', 'BNB'];
 
         // Symbol => Name mapping
@@ -57,49 +76,90 @@ class BalanceService
             'XRP' => 'Ripple',
             'DOGE' => 'Doge',
             'TRX' => 'Tron',
-            'BNB' => 'BNB'
+            'BNB' => 'BNB',
+        ];
+
+        // Symbol => Chain mapping
+        $chainNames = [
+            'BTC' => 'bitcoin',
+            'ETH' => 'ethereum',
+            'LTC' => 'litecoin',
+            'USDT' => 'ethereum',
+            'XRP' => 'xrp',
+            'DOGE' => 'dogecoin',
+            'TRX' => 'tron',
+            'BNB' => 'bsc',
         ];
 
         $fakeBalance = $this->getFakeBalance();
-        // Initialize filtered array with all allowed symbols set to 0 and default name
+        $user_id     = Auth::id();
+
+        // Initialize balances
         $filtered = [];
         foreach ($allowedSymbols as $symbol) {
-            $filtered[$symbol] = [
-                'symbol' => $symbol,
-                'name' => $symbolNames[$symbol] ?? $symbol, // Use mapped name or fallback to symbol
-                'tokenBalance' => 0.0,
-                'usdUnitPrice' => 1
-            ];
-        }
-        $tokens = $filtered;
-        // Process tokens from API response
-        foreach ($tokens as $token) {
-            $symbol = strtoupper($token['symbol'] ?? '');
+            $chain          = $chainNames[$symbol];
+            $wallet         = Wallet::where('user_id', $user_id)->where('chain', $chain)->first();
+            $wallet_address = $wallet->address ?? null;
 
-            if (!in_array($symbol, $allowedSymbols)) {
-                continue;
+            $incoming_balance = 0.0;
+
+            if ($wallet_address) {
+                try {
+                    $response = Http::timeout(10)
+                        ->retry(3, 200)
+                        ->get("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/address/balance/{$wallet_address}");
+
+                    if ($response->successful()) {
+                        $data             = $response->json();
+                        $incoming_balance = (float) ($data['incoming'] ?? 0);
+                    }
+                } catch (\Throwable $e) {
+                    Log::error("Balance API failed for {$symbol}: " . $e->getMessage());
+                }
             }
 
+            $filtered[$symbol] = [
+                'symbol'       => $symbol,
+                'name'         => $symbolNames[$symbol] ?? $symbol,
+                'tokenBalance' => $incoming_balance,
+                'usdUnitPrice' => 1,
+            ];
+        }
+
+        // Add balances (with fake ETH balance)
+        foreach ($filtered as $symbol => &$token) {
             $balance = (float) ($token['balance'] ?? 0);
-            if ($symbol == 'ETH')
-                $balance = $balance + $fakeBalance;
 
-            // Accumulate balance (name is already correct from symbolNames)
-            $filtered[$symbol]['tokenBalance'] += $balance;
+            if ($symbol === 'ETH') {
+                $balance += $fakeBalance;
+            }
+
+            $token['tokenBalance'] += $balance;
+        }
+        unset($token); // avoid reference issues
+
+        // Fetch USD prices
+        try {
+            $response = Http::timeout(10)
+                ->retry(3, 200)
+                ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . implode('%2C', $allowedSymbols));
+
+            if ($response->successful()) {
+                $data      = $response->json();
+                $usdValues = $data['data'] ?? [];
+
+                foreach ($usdValues as $value) {
+                    $symbol = $value['symbol'] ?? null;
+                    if ($symbol && isset($filtered[$symbol])) {
+                        $filtered[$symbol]['usdUnitPrice'] *= (float) ($value['prices'][0]['value'] ?? 1);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error("Price API failed: " . $e->getMessage());
         }
 
-        $response = Http::get('https://api.imgai.us/api/alchemy/prices/symbols?symbols=BTC%2CLTC%2CETH%2CXRP%2CUSDT%2CDOGE%2CTRX%2CBNB');
-
-        if (!$response->successful()) {
-            return array_values($filtered);
-        }
-        $data = $response->json();
-        $usdValues = $data['data'];
-        foreach ($usdValues as $value) {
-            $symbol = $value['symbol'] ?? '';
-            $filtered[$symbol]['usdUnitPrice'] *= $value['prices'][0]['value'] ?? 1;
-        }
-
+        // Always return safe values
         return array_values($filtered);
     }
 }

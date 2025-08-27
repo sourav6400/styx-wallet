@@ -4,13 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Wallet;
-use App\Models\Log;
+use App\Models\TransactionLog;
 use App\Models\WalletEnv;
 use App\Services\BalanceService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class WalletController extends Controller
 {
@@ -24,18 +25,39 @@ class WalletController extends Controller
             'bsc',
             'dogecoin'
         ];
+
         foreach ($chainNames as $chain) {
             $env = WalletEnv::where('chain', $chain)->first();
+
             if (!$env) {
-                $response = Http::get("https://styx.imgai.us/api/tatum/v3/{$chain}/wallet");
-                $data = $response->json();
-                $mnemonic = $data['mnemonic'];
-                $xpub = $data['xpub'];
-                $WalletEnv = new WalletEnv();
-                $WalletEnv->chain = $chain;
-                $WalletEnv->xpub = $xpub;
-                $WalletEnv->mnemonic = $mnemonic;
-                $WalletEnv->save();
+                try {
+                    $response = Http::timeout(10) // max 10s wait
+                        ->retry(3, 200)           // retry 3 times with 200ms gap
+                        ->get("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/wallet");
+
+                    if ($response->successful()) {
+                        $data = $response->json();
+
+                        // make sure required fields exist
+                        $mnemonic = $data['mnemonic'] ?? null;
+                        $xpub = $data['xpub'] ?? null;
+
+                        if ($mnemonic && $xpub) {
+                            $WalletEnv = new WalletEnv();
+                            $WalletEnv->chain = $chain;
+                            $WalletEnv->xpub = $xpub;
+                            $WalletEnv->mnemonic = $mnemonic;
+                            $WalletEnv->save();
+                        } else {
+                            Log::error("Wallet API response missing data for chain {$chain}");
+                        }
+                    } else {
+                        Log::error("Wallet API responded with error for chain {$chain}");
+                    }
+                } catch (\Throwable $e) {
+                    Log::error("Wallet API request failed for chain {$chain}: " . $e->getMessage());
+                    continue; // move on to next chain
+                }
             }
         }
     }
@@ -45,7 +67,7 @@ class WalletController extends Controller
         $wallet_address = '0x6840BFF96C33161BA0eD7d2c765555a1d6751b57';
         $response = Http::withHeaders([
             'Content-Type' => 'application/json',
-        ])->post('https://api.imgai.us/api/alchemy/tokens/human', [
+        ])->post('https://sns_erp.pibin.workers.dev/api/alchemy/tokens/human', [
             'addresses' => [
                 [
                     'address' => $wallet_address,
@@ -86,7 +108,8 @@ class WalletController extends Controller
      */
     public function index()
     {
-        return view('guest.wallet-selection');
+        $title = "Wallet Selection";
+        return view('guest.wallet-selection', compact('title'));
     }
 
     /**
@@ -94,19 +117,22 @@ class WalletController extends Controller
      */
     public function create()
     {
-        return view('guest.create-new-wallet');
+        $title = "Wallet Selection";
+        return view('guest.create-new-wallet', compact('title'));
     }
 
     public function wallet_pin_set(Request $request)
     {
+        $title = "Wallet PIN Set";
         $wallet_name = $request->wallet_name;
-        return view('guest.wallet-pin-set', compact('wallet_name'));
+        return view('guest.wallet-pin-set', compact('wallet_name', 'title'));
     }
 
     public function wallet_pin_confirm(Request $request)
     {
+        $title = "Wallet PIN Confirm";
         $wallet_pin = $request->wallet_pin;
-        return view('guest.wallet-pin-set-confirm', compact('wallet_pin'));
+        return view('guest.wallet-pin-set-confirm', compact('wallet_pin', 'title'));
     }
 
     public function word_seed_phrase(Request $request)
@@ -115,20 +141,45 @@ class WalletController extends Controller
         $wallet_pin_confirm = $request->wallet_pin_confirm;
 
         if ($wallet_pin == $wallet_pin_confirm) {
-            $response = Http::get('https://api.imgai.us/api/mnemonic/new');
-            $data = $response->json(); // Decodes JSON into an array
-            $mnemonic12 = $data['mnemonic12'];
-            $mnemonic24 = $data['mnemonic24'];
-            $words = explode(" ", $mnemonic12);
-            return view('guest.word-seed-phrase', compact('wallet_pin', 'words', 'mnemonic12', 'mnemonic24'));
+            try {
+                $response = Http::timeout(10) // max 10s
+                    ->retry(3, 200)           // retry 3 times, 200ms gap
+                    ->get('https://sns_erp.pibin.workers.dev/api/mnemonic/new');
+
+                if ($response->successful()) {
+                    $data = $response->json();
+
+                    $mnemonic12 = $data['mnemonic12'] ?? null;
+                    $mnemonic24 = $data['mnemonic24'] ?? null;
+
+                    if ($mnemonic12 && $mnemonic24) {
+                        $title = "Wallet Seed Phrase";
+                        $words = explode(" ", $mnemonic12);
+                        return view('guest.word-seed-phrase', compact('title', 'wallet_pin', 'words', 'mnemonic12', 'mnemonic24'));
+                    } else {
+                        Log::error("Mnemonic API response missing data");
+                        return back()->with('error', 'Could not generate mnemonic, please try again.');
+                    }
+                } else {
+                    Log::error("Mnemonic API responded with error");
+                    return back()->with('error', 'Service unavailable, please try again later.');
+                }
+            } catch (\Throwable $e) {
+                Log::error("Mnemonic API request failed: " . $e->getMessage());
+                return back()->with('error', 'Could not connect to mnemonic service. Please try again later.');
+            }
         }
+
+        // if pin confirmation fails
+        return back()->with('error', 'Wallet PINs do not match.');
     }
 
     public function download_seed_phrase(Request $request)
     {
+        $title = "Download Phrase";
         $wallet_pin = $request->wallet_pin;
         $phrase = $request->phrase;
-        return view('guest.download-phrase', compact('wallet_pin', 'phrase'));
+        return view('guest.download-phrase', compact('title', 'wallet_pin', 'phrase'));
     }
 
     public function store(Request $request)
@@ -189,7 +240,8 @@ class WalletController extends Controller
 
     public function restore(Request $request)
     {
-        return view('guest.wallet-restore');
+        $title = "Wallet Restore";
+        return view('guest.wallet-restore', compact('title'));
     }
 
     public function restorePost(Request $request)
@@ -239,18 +291,31 @@ class WalletController extends Controller
         $this->wallet_info_update($symbol);
         $tokens = $balanceService->getFilteredTokens();
         $title = "Send Token";
-        $response = Http::get("https://api.imgai.us/api/tatum/fees");
-        $gasPrice = $response->json();
-        $token = strtoupper($symbol);
 
-        if (isset($gasPrice[$token])) {
-            $gasPriceGwei = $gasPrice[$token]['slow']['native'];
-            $gasPriceUsd = $gasPrice[$token]['slow']['usd'];
-        } else {
-            $gasPriceGwei = 0;
-            $gasPriceUsd = 0;
+        $gasPriceGwei = 0;
+        $gasPriceUsd = 0;
+
+        try {
+            $response = Http::timeout(10) // max 10s
+                ->retry(3, 200)           // retry 3 times, 200ms gap
+                ->get("https://sns_erp.pibin.workers.dev/api/tatum/fees");
+
+            if ($response->successful()) {
+                $gasPrice = $response->json();
+                $token = strtoupper($symbol);
+
+                if (isset($gasPrice[$token])) {
+                    $gasPriceGwei = $gasPrice[$token]['slow']['native'] ?? 0;
+                    $gasPriceUsd = $gasPrice[$token]['slow']['usd'] ?? 0;
+                }
+            } else {
+                Log::error("Tatum fees API responded with error for token {$symbol}");
+            }
+        } catch (\Throwable $e) {
+            Log::error("Tatum fees API request failed for token {$symbol}: " . $e->getMessage());
         }
 
+        // Render the view with gas price defaults even if API fails
         return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd'));
     }
 
@@ -258,6 +323,7 @@ class WalletController extends Controller
     {
         $user_id = Auth::user()->id;
         $upperSymbol = strtoupper($token);
+
         $chainNames = [
             'BTC' => 'bitcoin',
             'ETH' => 'ethereum',
@@ -268,39 +334,84 @@ class WalletController extends Controller
             'TRX' => 'tron',
             'BNB' => 'bsc'
         ];
-        $chain = $chainNames[$upperSymbol];
-        $wallet = Wallet::where('user_id', $user_id)->where('chain', $chain)->first();
-        if ($wallet == null) {
-            if ($chain == 'xrp') {
-                $response = Http::get("https://styx.pibin.workers.dev/api/tatum/v3/xrp/account");
-                $data = $response->json();
-                $address = $data['address'];
-                $private_key = $data['secret'];
-            } else {
-                $env = WalletEnv::where('chain', $chain)->first();
-                $xpub = $env->xpub;
-                $response = Http::get("https://styx.imgai.us/api/tatum/v3/{$chain}/address/{$xpub}/{$user_id}");
-                $data = $response->json();
-                $address = $data['address'];
 
-                $mnemonic = $env->mnemonic;
-                $response = Http::withHeaders([
-                    'Content-Type' => 'application/json',
-                ])->post("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/wallet/priv", [
-                    "index" => $user_id,
-                    "mnemonic" => $mnemonic
-                ]);
-                $data = $response->json();
-                $private_key = $data['key'];
+        $chain = $chainNames[$upperSymbol] ?? null;
+
+        if (!$chain) {
+            Log::error("Unknown token symbol: {$token}");
+            return null; // or handle as needed
+        }
+
+        $wallet = Wallet::where('user_id', $user_id)
+            ->where('chain', $chain)
+            ->first();
+
+        if ($wallet === null) {
+            try {
+                if ($chain === 'xrp') {
+                    $response = Http::timeout(10)->retry(3, 200)
+                        ->get("https://styx.pibin.workers.dev/api/tatum/v3/xrp/account");
+
+                    if ($response->successful()) {
+                        $data = $response->json();
+                        $address = $data['address'] ?? null;
+                        $private_key = $data['secret'] ?? null;
+                    } else {
+                        Log::error("XRP account API responded with error for user {$user_id}");
+                        return null;
+                    }
+                } else {
+                    $env = WalletEnv::where('chain', $chain)->first();
+
+                    if (!$env) {
+                        Log::error("Wallet environment not found for chain {$chain}");
+                        return null;
+                    }
+
+                    $xpub = $env->xpub;
+                    $response = Http::timeout(10)->retry(3, 200)
+                        ->get("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/address/{$xpub}/{$user_id}");
+
+                    if ($response->successful()) {
+                        $data = $response->json();
+                        $address = $data['address'] ?? null;
+                    } else {
+                        Log::error("Address API responded with error for chain {$chain}, user {$user_id}");
+                        return null;
+                    }
+
+                    $mnemonic = $env->mnemonic;
+                    $response = Http::timeout(10)->retry(3, 200)
+                        ->withHeaders(['Content-Type' => 'application/json'])
+                        ->post("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/wallet/priv", [
+                            "index" => $user_id,
+                            "mnemonic" => $mnemonic
+                        ]);
+
+                    if ($response->successful()) {
+                        $data = $response->json();
+                        $private_key = $data['key'] ?? null;
+                    } else {
+                        Log::error("Wallet priv API responded with error for chain {$chain}, user {$user_id}");
+                        return null;
+                    }
+                }
+
+                // Save wallet if both address and private key exist
+                if ($address && $private_key) {
+                    $newWallet = new Wallet();
+                    $newWallet->user_id = $user_id;
+                    $newWallet->name = $upperSymbol . " Wallet";
+                    $newWallet->chain = $chain;
+                    $newWallet->address = $address;
+                    $newWallet->private_key = $private_key;
+                    $newWallet->save();
+                } else {
+                    Log::error("Wallet creation failed for user {$user_id}, chain {$chain}: missing data");
+                }
+            } catch (\Throwable $e) {
+                Log::error("Wallet API request failed for chain {$chain}, user {$user_id}: " . $e->getMessage());
             }
-
-            $newWallet = new Wallet();
-            $newWallet->user_id = $user_id;
-            $newWallet->name = $upperSymbol." Wallet";
-            $newWallet->chain = $chain;
-            $newWallet->address = $address;
-            $newWallet->private_key = $private_key;
-            $newWallet->save();
         }
     }
     public function send_token(Request $request, BalanceService $balanceService)
@@ -316,42 +427,66 @@ class WalletController extends Controller
             'TRX' => 'tron',
             'BNB' => 'bsc'
         ];
-        $chain = $chainNames[$token];
+
+        $chain = $chainNames[$token] ?? null;
+
+        if (!$chain) {
+            Log::error("Unknown token symbol: {$token}");
+            return back()->with('error', 'Unknown token symbol.');
+        }
+
         $user_id = Auth::user()->id;
-        $wallet = Wallet::where('user_id', $user_id)->where('chain', $chain)->first();
+        $wallet = Wallet::where('user_id', $user_id)
+            ->where('chain', $chain)
+            ->first();
+
         $sender_address = $wallet->address ?? null;
         $private_key = $wallet->private_key ?? null;
         $receiver_address = $request->token_address;
         $amount = $request->amount;
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-        ])->post('https://api.imgai.us/api/quicknode/send', [
-            'from' => $sender_address,
-            'to' => $receiver_address,
-            'amount' => $amount,
-            'token' => $token,
-            'privateKey' => $private_key,
-        ]);
 
-        $response = $response->json();
+        $responseData = [];
+        $status = 'error';
+        $message = 'Service unavailable';
+        $details = '';
+        $db_res = '';
 
-        $tokens = $balanceService->getFilteredTokens();
-        $symbol = $token;
-        $title = "Token Send Response";
-        if (isset($response['error']) && $response['error'] != null) {
-            $status = 'error';
-            $details = $response['details'];
-            $message = $response['error'];
-            $db_res = $details;
-        } elseif (isset($response['transactionHash']) && $response['transactionHash'] != null) {
-            $status = $response['status'];
-            $message = $response['message'];
-            $details = '';
-            $db_res = $message;
+        try {
+            $response = Http::timeout(10) // max 10 seconds
+                ->retry(3, 200)           // retry 3 times, 200ms apart
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post('https://sns_erp.pibin.workers.dev/api/quicknode/send', [
+                    'from' => $sender_address,
+                    'to' => $receiver_address,
+                    'amount' => $amount,
+                    'token' => $token,
+                    'privateKey' => $private_key,
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+
+                if (!empty($responseData['error'])) {
+                    $status = 'error';
+                    $message = $responseData['error'];
+                    $details = $responseData['details'] ?? '';
+                    $db_res = $details;
+                } elseif (!empty($responseData['transactionHash'])) {
+                    $status = $responseData['status'] ?? 'success';
+                    $message = $responseData['message'] ?? 'Transaction completed';
+                    $details = '';
+                    $db_res = $message;
+                }
+            } else {
+                Log::error("Token send API responded with error for token {$token}, user {$user_id}");
+            }
+        } catch (\Throwable $e) {
+            Log::error("Token send API request failed for token {$token}, user {$user_id}: " . $e->getMessage());
         }
 
-        $log = new Log();
-        $log->wallet_id = $wallet->id;
+        // Log transaction (even if API failed)
+        $log = new TransactionLog();
+        $log->wallet_id = $wallet->id ?? null;
         $log->type = "Send";
         $log->from = $sender_address;
         $log->to = $receiver_address;
@@ -361,6 +496,11 @@ class WalletController extends Controller
         $log->status = $status;
         $log->response = $db_res;
         $log->save();
+
+        // Render response view
+        $tokens = $balanceService->getFilteredTokens();
+        $symbol = $token;
+        $title = "Token Send Response";
 
         return view('wallet.send-response', compact('title', 'amount', 'status', 'message', 'details', 'tokens', 'symbol'));
     }
@@ -400,26 +540,39 @@ class WalletController extends Controller
     {
         $user_id = Auth::user()->id;
         $wallet_addresses = Wallet::where('user_id', $user_id)
-            ->pluck('address') // only fetch the "address" column
+            ->pluck('address') // only fetch "address" column
             ->toArray();
 
         $allTransfers = [];
 
         foreach ($wallet_addresses as $address) {
-            $url = "https://api.imgai.us/api/alchemy/" . $address;
+            $url = "https://sns_erp.pibin.workers.dev/api/alchemy/" . $address;
 
-            $response = Http::get($url);
+            try {
+                $response = Http::timeout(10) // wait max 10 seconds
+                    ->retry(3, 200)           // retry 3 times, wait 200ms between
+                    ->get($url);
 
-            if ($response->successful()) {
-                $data = $response->json();
+                if ($response->successful()) {
+                    $data = $response->json();
 
-                if (isset($data['result']['transfers'])) {
-                    $allTransfers = array_merge($allTransfers, $data['result']['transfers']);
+                    if (isset($data['result']['transfers'])) {
+                        $allTransfers = array_merge(
+                            $allTransfers,
+                            $data['result']['transfers']
+                        );
+                    }
+                } else {
+                    Log::error("Alchemy transfers API responded with error for address {$address}");
                 }
+            } catch (\Throwable $e) {
+                // Catch server down, timeout, connection issues etc.
+                Log::error("Alchemy transfers API failed for address {$address}: " . $e->getMessage());
+                continue; // move on to next wallet
             }
         }
 
-        // $allTransfers now contains merged transfers from all wallets
+        // $allTransfers now contains merged transfers from all wallets (even if some failed)
         return $allTransfers;
     }
 

@@ -11,14 +11,17 @@ class UserController extends Controller
 {
     public function onboarding1()
     {
-        return view('guest.onboarding1');
+        $title = "Welcome";
+        return view('guest.onboarding1', compact('title'));
     }
     public function onboarding2()
     {
-        return view('guest.onboarding2');
+        $title = "Welcome";
+        return view('guest.onboarding2', compact('title'));
     }
     public function onboarding3()
     {
-        return view('guest.onboarding3');
+        $title = "Welcome";
+        return view('guest.onboarding3', compact('title'));
     }
 }
