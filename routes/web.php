@@ -68,6 +68,7 @@ Route::middleware(['auth', 'never.logout', 'pin.lock'])->group(function () {
     Route::get('/backup-seed', [SettingsController::class, 'backup_seed'])->name('settings.backup_seed');
     Route::get('/change-pin', [SettingsController::class, 'change_pin_view'])->name('settings.change_pin_view');
     Route::post('/update-pin', [SettingsController::class, 'store_new_pin'])->name('settings.store_new_pin');
+    Route::post('/check-pin', [SettingsController::class, 'checkPin'])->name('settings.check_pin');
     Route::get('/faq', [SettingsController::class, 'faq'])->name('settings.faq');
     Route::get('/terms-conditions', [SettingsController::class, 'terms_conditions'])->name('settings.terms_conditions');
     Route::get('/support', [SettingsController::class, 'support'])->name('support');

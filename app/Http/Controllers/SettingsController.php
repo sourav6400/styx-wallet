@@ -13,13 +13,25 @@ class SettingsController extends Controller
 {
     public function backup_seed(BalanceService $balanceService)
     {
-        $user_id = Auth::user()->id;
-        $pin_hash = Auth::user()->pin_hash;
         $mnemonic12 = Auth::user()->phrase12;
         $words = explode(" ", $mnemonic12);
         $title = "Backup Seed";
         $tokens = $balanceService->getFilteredTokens();
-        return view('settings.backup-seed', compact('title', 'tokens', 'pin_hash', 'mnemonic12', 'words'));
+        return view('settings.backup-seed', compact('title', 'tokens', 'mnemonic12', 'words'));
+    }
+    public function checkPin(Request $request)
+    {
+        $request->validate([
+            'pin' => 'required|digits:6',
+        ]);
+
+        $user = Auth::user();
+
+        if (!$user || !Hash::check($request->pin, $user->pin_hash)) {
+            return response()->json(['success' => false, 'message' => 'Invalid PIN.'], 401);
+        }
+
+        return response()->json(['success' => true]);
     }
     public function change_pin_view(BalanceService $balanceService)
     {
@@ -31,18 +43,12 @@ class SettingsController extends Controller
     {
         $oldPin = $request->oldPin;
         $newPin = $request->newPin;
-        // $wallet_id = Auth::user()->wallet_id;
-        // $wallet = Wallet::find($wallet_id);
         $hashedPin = Auth::user()->pin_hash;
         if (Hash::check($oldPin, $hashedPin)) {
             $user_id = Auth::user()->id;
             $user = User::find($user_id);
             $user->pin_hash = Hash::make($newPin);
             $user->save();
-
-            Wallet::where('user_id', $user_id)->update([
-                'pin' => $newPin, // or just $newPin if no hashing needed
-            ]);
 
             return redirect()->back()->with('success_msg', 'PIN Updated Successfully');
         } else {

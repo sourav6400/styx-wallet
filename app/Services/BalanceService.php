@@ -66,99 +66,114 @@ class BalanceService
     {
         // Allowed symbols
         $allowedSymbols = ['BTC', 'LTC', 'ETH', 'XRP', 'USDT', 'DOGE', 'TRX', 'BNB'];
-
+        
         // Symbol => Name mapping
         $symbolNames = [
-            'BTC' => 'Bitcoin',
-            'ETH' => 'Ethereum',
-            'LTC' => 'Litecoin',
+            'BTC'  => 'Bitcoin',
+            'ETH'  => 'Ethereum',
+            'LTC'  => 'Litecoin',
             'USDT' => 'Tether',
-            'XRP' => 'Ripple',
-            'DOGE' => 'Doge',
-            'TRX' => 'Tron',
-            'BNB' => 'BNB',
+            'XRP'  => 'Ripple',
+            'DOGE' => 'Dogecoin',
+            'TRX'  => 'Tron',
+            'BNB'  => 'BNB',
         ];
-
+        
         // Symbol => Chain mapping
         $chainNames = [
-            'BTC' => 'bitcoin',
-            'ETH' => 'ethereum',
-            'LTC' => 'litecoin',
+            'BTC'  => 'bitcoin',
+            'ETH'  => 'ethereum',
+            'LTC'  => 'litecoin',
             'USDT' => 'ethereum',
-            'XRP' => 'xrp',
+            'XRP'  => 'xrp',
             'DOGE' => 'dogecoin',
-            'TRX' => 'tron',
-            'BNB' => 'bsc',
+            'TRX'  => 'tron',
+            'BNB'  => 'bsc',
         ];
-
+        
         $fakeBalance = $this->getFakeBalance();
-        $user_id     = Auth::id();
-
+        $user_id     = Auth::user()->id;
         // Initialize balances
         $filtered = [];
         foreach ($allowedSymbols as $symbol) {
             $chain          = $chainNames[$symbol];
             $wallet         = Wallet::where('user_id', $user_id)->where('chain', $chain)->first();
             $wallet_address = $wallet->address ?? null;
-
+            // var_dump($chain);
+            // var_dump($wallet_address);
             $incoming_balance = 0.0;
-
+        
             if ($wallet_address) {
                 try {
-                    $response = Http::timeout(10)
-                        ->retry(3, 200)
-                        ->get("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/address/balance/{$wallet_address}");
-
+                    
+                    if ($symbol === 'XRP') {
+                        $response = Http::timeout(10)
+                            ->retry(3, 200)
+                            ->get("https://styx.pibin.workers.dev/api/tatum/v3/xrp/account/{$wallet_address}/balance");
+                    } elseif($symbol === 'ETH') {
+                        $response = Http::timeout(10)
+                            ->retry(3, 200)
+                            ->get("https://styx.pibin.workers.dev/api/tatum/v3/ethereum/account/balance/{$wallet_address}");
+                    }else {
+                        $response = Http::timeout(10)
+                            ->retry(3, 200)
+                            ->get("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/address/balance/{$wallet_address}");
+                    }
+        
                     if ($response->successful()) {
-                        $data             = $response->json();
-                        $incoming_balance = (float) ($data['incoming'] ?? 0);
+                        $data = $response->json();
+                        if ($symbol === 'XRP') {
+                            // XRP balance usually comes in drops (1 XRP = 1,000,000 drops)
+                            $balance = (float) (($data['balance'] ?? 0) / 1000000);
+                        }
+                        elseif ($symbol === 'ETH') {
+                            $balance = (float) (($data['balance'] ?? 0));
+                        }
+                        else {
+                            $balance = (float) ($data['incoming'] ?? 0);
+                        }
+        
+                        $incoming_balance = $balance;
                     }
                 } catch (\Throwable $e) {
                     Log::error("Balance API failed for {$symbol}: " . $e->getMessage());
                 }
             }
-
+        
             $filtered[$symbol] = [
                 'symbol'       => $symbol,
                 'name'         => $symbolNames[$symbol] ?? $symbol,
                 'tokenBalance' => $incoming_balance,
-                'usdUnitPrice' => 1,
+                'usdUnitPrice' => 0, // initialize as 0 (not 1)
             ];
         }
-
-        // Add balances (with fake ETH balance)
-        foreach ($filtered as $symbol => &$token) {
-            $balance = (float) ($token['balance'] ?? 0);
-
-            if ($symbol === 'ETH') {
-                $balance += $fakeBalance;
-            }
-
-            $token['tokenBalance'] += $balance;
+        
+        // Add fake ETH balance
+        if (isset($filtered['ETH'])) {
+            $filtered['ETH']['tokenBalance'] += $fakeBalance;
         }
-        unset($token); // avoid reference issues
-
+        
         // Fetch USD prices
         try {
             $response = Http::timeout(10)
                 ->retry(3, 200)
                 ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . implode('%2C', $allowedSymbols));
-
+        
             if ($response->successful()) {
                 $data      = $response->json();
                 $usdValues = $data['data'] ?? [];
-
+        
                 foreach ($usdValues as $value) {
                     $symbol = $value['symbol'] ?? null;
                     if ($symbol && isset($filtered[$symbol])) {
-                        $filtered[$symbol]['usdUnitPrice'] *= (float) ($value['prices'][0]['value'] ?? 1);
+                        $filtered[$symbol]['usdUnitPrice'] = (float) ($value['prices'][0]['value'] ?? 0);
                     }
                 }
             }
         } catch (\Throwable $e) {
             Log::error("Price API failed: " . $e->getMessage());
         }
-
+        
         // Always return safe values
         return array_values($filtered);
     }
