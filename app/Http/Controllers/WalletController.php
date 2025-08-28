@@ -283,7 +283,7 @@ class WalletController extends Controller
             $symbol = "btc";
 
         $title = "My Wallet";
-        $transfers = $this->get_transactions();
+        $transfers = $this->get_transactions($symbol);
         return view('wallet.my-wallet', compact('title', 'tokens', 'symbol', 'transfers'));
     }
 
@@ -329,7 +329,7 @@ class WalletController extends Controller
             'BTC' => 'bitcoin',
             'ETH' => 'ethereum',
             'LTC' => 'litecoin',
-            'USDT' => 'ethereum',
+            'USDT' => 'tron',
             'XRP' => 'xrp',
             'DOGE' => 'dogecoin',
             'TRX' => 'tron',
@@ -418,91 +418,145 @@ class WalletController extends Controller
     public function send_token(Request $request, BalanceService $balanceService)
     {
         $token = $request->token;
+
+        // Map symbols to chain names
         $chainNames = [
-            'BTC' => 'bitcoin',
-            'ETH' => 'ethereum',
-            'LTC' => 'litecoin',
-            'USDT' => 'ethereum',
-            'XRP' => 'xrp',
+            'BTC'  => 'bitcoin',
+            'ETH'  => 'ethereum',
+            'LTC'  => 'litecoin',
+            'USDT' => 'tron',
+            'XRP'  => 'xrp',
             'DOGE' => 'dogecoin',
-            'TRX' => 'tron',
-            'BNB' => 'bsc'
+            'TRX'  => 'tron',
+            'BNB'  => 'bsc',
         ];
-
+    
         $chain = $chainNames[$token] ?? null;
-
+    
         if (!$chain) {
-            Log::error("Unknown token symbol: {$token}");
+            Log::error("Unknown token symbol received: {$token}");
             return back()->with('error', 'Unknown token symbol.');
         }
-
-        $user_id = Auth::user()->id;
-        $wallet = Wallet::where('user_id', $user_id)
-            ->where('chain', $chain)
-            ->first();
-
-        $sender_address = $wallet->address ?? null;
-        $private_key = $wallet->private_key ?? null;
-        $receiver_address = $request->token_address;
-        $amount = $request->amount;
-
-        $responseData = [];
+    
+        $userId = Auth::id();
+        $wallet = Wallet::where('user_id', $userId)->where('chain', $chain)->first();
+    
+        if (!$wallet) {
+            Log::error("Wallet not found for user {$userId} on chain {$chain}");
+            return back()->with('error', 'Wallet not found.');
+        }
+    
+        $senderAddress   = $wallet->address;
+        $privateKey      = $wallet->private_key;
+        $receiverAddress = $request->token_address;
+        $amount          = $request->amount;
+    
         $status = 'error';
         $message = 'Service unavailable';
         $details = '';
         $db_res = '';
-
+        $responseData = [];
+    
         try {
-            $response = Http::timeout(10) // max 10 seconds
-                ->retry(3, 200)           // retry 3 times, 200ms apart
-                ->withHeaders(['Content-Type' => 'application/json'])
-                ->post('https://sns_erp.pibin.workers.dev/api/quicknode/send', [
-                    'from' => $sender_address,
-                    'to' => $receiver_address,
-                    'amount' => $amount,
-                    'token' => $token,
-                    'privateKey' => $private_key,
+            if (in_array($chain, ['bitcoin', 'litecoin', 'dogecoin'])) {
+                // Dynamic fee handling
+                $fees = [
+                    'bitcoin'  => '0.000003',
+                    'litecoin' => '0.0002',
+                    'dogecoin' => '0.00007',
+                ];
+                $fee = $fees[$chain];
+    
+                $response = Http::withHeaders([
+                    'accept'       => 'application/json',
+                    'content-type' => 'application/json',
+                ])->post("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/transaction", [
+                    "fromAddress" => [[
+                        "address"    => $senderAddress,
+                        "privateKey" => $privateKey,
+                    ]],
+                    "to" => [[
+                        "address" => $receiverAddress,
+                        "value"   => (float) $amount,
+                    ]],
+                    "fee"           => $fee,
+                    "changeAddress" => $senderAddress,
                 ]);
-
-            if ($response->successful()) {
-                $responseData = $response->json();
-
-                if (!empty($responseData['error'])) {
-                    $status = 'error';
-                    $message = $responseData['error'];
-                    $details = $responseData['details'] ?? '';
-                    $db_res = $details;
-                } elseif (!empty($responseData['transactionHash'])) {
-                    $status = $responseData['status'] ?? 'success';
-                    $message = $responseData['message'] ?? 'Transaction completed';
-                    $details = '';
-                    $db_res = $message;
+    
+                $data = $response->json();
+                if (isset($data['txId'])) {
+                    $status  = 'success';
+                    $message = $data['txId'];
+                } else {
+                    $message = $data['message'] ?? 'Transaction failed';
+                    $details = $data['error'] ?? 'Unknown error';
+                    Log::error("{$chain} transaction failed for user {$userId}: " . json_encode($data));
                 }
-            } else {
-                Log::error("Token send API responded with error for token {$token}, user {$user_id}");
+            } 
+            
+            elseif ($chain === 'bsc') {
+                $response = Http::withHeaders([
+                    'accept'       => 'application/json',
+                    'content-type' => 'application/json',
+                ])->post('https://styx.pibin.workers.dev/api/tatum/v3/bsc/transaction', [
+                    "fromPrivateKey" => $privateKey,
+                    "to"             => $receiverAddress,
+                    "amount"         => $amount,
+                    "currency"       => "BSC",
+                ]);
+    
+                $data = $response->json();
+                if (isset($data['txId'])) {
+                    $status  = 'success';
+                    $message = $data['txId'];
+                } else {
+                    $message = $data['message'] ?? 'Transaction failed';
+                    $details = $data['error'] ?? 'Unknown error';
+                    Log::error("BSC transaction failed for user {$userId}: " . json_encode($data));
+                }
+            } 
+            
+            elseif ($chain === 'ethereum') {
+                $response = Http::timeout(10)
+                    ->retry(3, 200)
+                    ->withHeaders(['Content-Type' => 'application/json'])
+                    ->post('https://sns_erp.pibin.workers.dev/api/quicknode/send', [
+                        'from'       => $senderAddress,
+                        'to'         => $receiverAddress,
+                        'amount'     => $amount,
+                        'token'      => $token,
+                        'privateKey' => $privateKey,
+                    ]);
+    
+                if ($response->successful()) {
+                    $responseData = $response->json();
+                    if (!empty($responseData['error'])) {
+                        $status  = 'error';
+                        $message = $responseData['error'];
+                        $details = $responseData['details'] ?? '';
+                        $db_res  = $details;
+                        Log::error("Ethereum transaction error for user {$userId}: " . json_encode($responseData));
+                    } elseif (!empty($responseData['transactionHash'])) {
+                        $status  = $responseData['status'] ?? 'success';
+                        $message = $responseData['transactionHash'];
+                        $db_res  = $message;
+                    }
+                } else {
+                    Log::error("Ethereum API error for token {$token}, user {$userId}: " . $response->body());
+                }
             }
         } catch (\Throwable $e) {
-            Log::error("Token send API request failed for token {$token}, user {$user_id}: " . $e->getMessage());
+            $status  = 'error';
+            $message = 'Exception occurred during transaction';
+            $details = $e->getMessage();
+            Log::error("Exception in {$chain} transaction for user {$userId}: " . $e->getMessage());
         }
-
-        // Log transaction (even if API failed)
-        $log = new TransactionLog();
-        $log->wallet_id = $wallet->id ?? null;
-        $log->type = "Send";
-        $log->from = $sender_address;
-        $log->to = $receiver_address;
-        $log->token = $token;
-        $log->chain = $chain;
-        $log->amount = $amount;
-        $log->status = $status;
-        $log->response = $db_res;
-        $log->save();
-
+    
         // Render response view
         $tokens = $balanceService->getFilteredTokens();
         $symbol = $token;
-        $title = "Token Send Response";
-
+        $title  = "Token Send Response";
+    
         return view('wallet.send-response', compact('title', 'amount', 'status', 'message', 'details', 'tokens', 'symbol'));
     }
 
@@ -514,7 +568,7 @@ class WalletController extends Controller
             'BTC' => 'bitcoin',
             'ETH' => 'ethereum',
             'LTC' => 'litecoin',
-            'USDT' => 'ethereum',
+            'USDT' => 'tron',
             'XRP' => 'xrp',
             'DOGE' => 'dogecoin',
             'TRX' => 'tron',
@@ -537,12 +591,29 @@ class WalletController extends Controller
         return view('wallet.transactions', compact('title', 'tokens', 'transfers'));
     }
 
-    public function get_transactions()
+    public function get_transactions($symbol=null)
     {
         $user_id = Auth::user()->id;
-        $wallet_addresses = Wallet::where('user_id', $user_id)
-            ->pluck('address') // only fetch "address" column
-            ->toArray();
+        if($symbol == null){
+            $wallet_addresses = Wallet::where('user_id', $user_id)
+                ->pluck('address') // only fetch "address" column
+                ->toArray();
+        }
+        else {
+            $chainNames = [
+                'BTC' => 'bitcoin',
+                'ETH' => 'ethereum',
+                'LTC' => 'litecoin',
+                'USDT' => 'tron',
+                'XRP' => 'xrp',
+                'DOGE' => 'dogecoin',
+                'TRX' => 'tron',
+                'BNB' => 'bsc'
+            ];
+            $upperSymbol = strtoupper($symbol);
+            $chain = $chainNames[$upperSymbol];
+            $wallet_addresses = Wallet::where('user_id', $user_id)->where('chain', $chain)->get();
+        }
 
         $allTransfers = [];
 

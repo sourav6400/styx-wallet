@@ -84,7 +84,7 @@ class BalanceService
             'BTC'  => 'bitcoin',
             'ETH'  => 'ethereum',
             'LTC'  => 'litecoin',
-            'USDT' => 'ethereum',
+            'USDT' => 'tron',
             'XRP'  => 'xrp',
             'DOGE' => 'dogecoin',
             'TRX'  => 'tron',
@@ -99,13 +99,10 @@ class BalanceService
             $chain          = $chainNames[$symbol];
             $wallet         = Wallet::where('user_id', $user_id)->where('chain', $chain)->first();
             $wallet_address = $wallet->address ?? null;
-            // var_dump($chain);
-            // var_dump($wallet_address);
             $incoming_balance = 0.0;
         
             if ($wallet_address) {
                 try {
-                    
                     if ($symbol === 'XRP') {
                         $response = Http::timeout(10)
                             ->retry(3, 200)
@@ -114,6 +111,11 @@ class BalanceService
                         $response = Http::timeout(10)
                             ->retry(3, 200)
                             ->get("https://styx.pibin.workers.dev/api/tatum/v3/ethereum/account/balance/{$wallet_address}");
+                    }
+                    elseif($symbol === 'BNB'){
+                        $response = Http::timeout(10)
+                            ->retry(3, 200)
+                            ->get("https://styx.pibin.workers.dev/api/tatum/v3/bsc/account/balance/{$wallet_address}");
                     }else {
                         $response = Http::timeout(10)
                             ->retry(3, 200)
@@ -126,7 +128,7 @@ class BalanceService
                             // XRP balance usually comes in drops (1 XRP = 1,000,000 drops)
                             $balance = (float) (($data['balance'] ?? 0) / 1000000);
                         }
-                        elseif ($symbol === 'ETH') {
+                        elseif ($symbol === 'ETH' || $symbol === 'BNB') {
                             $balance = (float) (($data['balance'] ?? 0));
                         }
                         else {
