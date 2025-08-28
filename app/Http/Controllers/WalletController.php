@@ -264,11 +264,12 @@ class WalletController extends Controller
         $title = "Dashboard";
         $tokens = $balanceService->getFilteredTokens();
         $totalUsd = 0;
-
+        $totalCoin = 0;
         foreach ($tokens as $key => $token) {
+            $totalCoin = $totalCoin + $token['tokenBalance'];
             $totalUsd = $totalUsd + $token['tokenBalance'] * $token['usdUnitPrice'];
         }
-        return view('wallet.dashboard', compact('title', 'tokens', 'totalUsd'));
+        return view('wallet.dashboard', compact('title', 'tokens', 'totalCoin', 'totalUsd'));
     }
 
     /**

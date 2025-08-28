@@ -34,6 +34,13 @@
                         <th>Portfolio</th>
                     </tr>
                     @foreach ($tokens as $token)
+                        @php
+                            if ($totalCoin > 0) {
+                                $portfolio = ($token['tokenBalance'] / $totalCoin) * 100;
+                            } else {
+                                $portfolio = 0; // avoid division by zero
+                            }
+                        @endphp
                         <tr>
                             <td>
                                 <div class="assetName_data">
@@ -55,7 +62,8 @@
                                         @endphp
 
                                         @if ($icon)
-                                            <li><img src="{{ asset('images/icon/' . $icon) }}" alt="{{ $symbol }} icon"></li>
+                                            <li><img src="{{ asset('images/icon/' . $icon) }}"
+                                                    alt="{{ $symbol }} icon"></li>
                                         @endif
                                         <li>
                                             <h4>{{ $token['name'] }}</h4>
@@ -82,7 +90,7 @@
                             </td>
                             <td>
                                 <div class="value_data">
-                                    <h5>{{ $token['symbol'] == 'ETH' ? '100.00%' : '0.00%' }}</h5>
+                                    <h5>{{ number_format($portfolio, 2, '.', ',') }}%</h5>
                                 </div>
                             </td>
                         </tr>
