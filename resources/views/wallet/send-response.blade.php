@@ -10,11 +10,27 @@
                 @if ($status != 'error')
                     <div class="newAccount_popup_wrapper position-relative">
                         <div class="sucessfully_sent">
-                            <h3>Send Ethereum <span>ETH</span> <img src="{{ asset('images/icon/icon7.svg') }}"
-                                    alt=""></h3>
+                            @php
+                                $iconMap = [
+                                    'BTC' => 'icon5.svg',
+                                    'LTC' => 'icon6.svg',
+                                    'ETH' => 'icon7.svg',
+                                    'XRP' => 'icon8.svg',
+                                    'USDT' => 'tether.svg',
+                                    'DOGE' => 'dodge.svg',
+                                    'TRX' => 'trx.svg',
+                                    'BNB' => 'icon_bnb.svg',
+                                ];
+                                $icon = $iconMap[$token] ?? null;
+                            @endphp
+                            <h3>Send {{ $tokenName }} <span>{{ $token }}</span>
+                                @if ($icon)
+                                    <img src="{{ asset('images/icon/' . $icon) }}" alt="{{ $token }} icon">
+                                @endif
+                            </h3>
                             <img class="vector" src="{{ asset('images/vector/vector8.png') }}" alt="">
-                            <span>Sucessfully sent {{ $amount }} ETH</span>
-                            <span>{{ $message }}</span>
+                            <span>Sucessfully sent {{ $amount }} {{ $token }}</span>
+                            <span>Transaction ID: {{ $message }}</span>
                         </div>
                     </div>
                 @else

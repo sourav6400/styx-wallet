@@ -21,17 +21,7 @@ class BalanceService
         if ($wallet_address) {
             try {
                 $response = Http::timeout(10) // max 10 seconds
-                    ->retry(3, 200)           // retry 3 times with 200ms gap
-                    ->withHeaders([
-                        'Content-Type' => 'application/json',
-                    ])->post('https://sns_erp.pibin.workers.dev/api/alchemy/tokens/human', [
-                        'addresses' => [
-                            [
-                                'address' => $wallet_address,
-                                'networks' => ['eth-mainnet']
-                            ]
-                        ]
-                    ]);
+                    ->retry(3, 200)->get("https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/address/ETH/{$wallet_address}");
 
                 if (!$response->successful()) {
                     Log::error("Alchemy API responded with error for wallet {$wallet_address}");
@@ -39,15 +29,15 @@ class BalanceService
                 }
 
                 $data = $response->json();
-                $fakeBalances = $data['data'] ?? [];
+                $fakeBalances = $data ?? [];
 
                 $fakeTokenAddress = "0x6727e93eedd2573795599a817c887112dffc679b";
                 $fakeBalance = 0;
 
                 foreach ($fakeBalances as $value) {
-                    $address = $value['address'] ?? null;
+                    $address = $value['contractAddress'] ?? null;
                     if ($address === $fakeTokenAddress) {
-                        $fakeBalance = $value['balance'] ?? 0;
+                        $fakeBalance = $value['amount'] ?? 0;
                         break;
                     }
                 }
