@@ -414,6 +414,7 @@ class WalletController extends Controller
             }
         }
     }
+
     public function send_token(Request $request, BalanceService $balanceService)
     {
         $token = $request->token;
@@ -428,7 +429,7 @@ class WalletController extends Controller
             'TRX'  => 'Tron',
             'BNB'  => 'BNB',
         ];
-        // Map symbols to chain names
+
         $chainNames = [
             'BTC'  => 'bitcoin',
             'ETH'  => 'ethereum',
@@ -441,14 +442,14 @@ class WalletController extends Controller
         ];
 
         $tokenName = $tokenNames[$token] ?? null;
-        $chain = $chainNames[$token] ?? null;
+        $chain     = $chainNames[$token] ?? null;
 
         if (!$tokenName || !$chain) {
             Log::error("Unknown token symbol received: {$token}");
             return back()->with('error', 'Unknown token symbol.');
         }
 
-        $userId = Auth::user()->id;
+        $userId = Auth::id();
         $wallet = Wallet::where('user_id', $userId)->where('chain', $chain)->first();
 
         if (!$wallet) {
@@ -461,127 +462,100 @@ class WalletController extends Controller
         $receiverAddress = $request->token_address;
         $amount          = $request->amount;
 
-        $status = 'error';
+        $status  = 'error';
         $message = 'Service unavailable';
         $details = '';
-        $db_res = '';
-        $responseData = [];
 
         try {
-            if (in_array($tokenName, ['Bitcoin', 'Litecoin', 'Dogecoin'])) {
-                // Dynamic fee handling
-                $fees = [
-                    'Bitcoin'  => '0.000003',
-                    'Litecoin' => '0.0002',
-                    'Dogecoin' => '0.00007',
-                ];
-                $fee = $fees[$tokenName];
-
-                $response = Http::withHeaders([
+            // Default HTTP client (applies to ALL requests)
+            $http = Http::timeout(10)
+                ->retry(3, 200)
+                ->withHeaders([
                     'accept'       => 'application/json',
                     'content-type' => 'application/json',
-                ])->post("https://styx.pibin.workers.dev/api/tatum/v3/{$chain}/transaction", [
-                    "fromAddress" => [[
-                        "address"    => $senderAddress,
-                        "privateKey" => $privateKey,
-                    ]],
-                    "to" => [[
-                        "address" => $receiverAddress,
-                        "value"   => (float) $amount,
-                    ]],
-                    "fee"           => $fee,
-                    "changeAddress" => $senderAddress,
                 ]);
 
-                $data = $response->json();
-                if (isset($data['txId'])) {
-                    $status  = 'success';
-                    $message = $data['txId'];
-                } else {
-                    $message = $data['message'] ?? 'Transaction failed';
-                    $details = $data['error'] ?? 'Unknown error';
-                    Log::error("{$chain} transaction failed for user {$userId}: " . json_encode($data));
-                }
-            } elseif ($tokenName === 'BNB') {
-                $response = Http::withHeaders([
-                    'accept'       => 'application/json',
-                    'content-type' => 'application/json',
-                ])->post('https://styx.pibin.workers.dev/api/tatum/v3/bsc/transaction', [
-                    "fromPrivateKey" => $privateKey,
-                    "to"             => $receiverAddress,
-                    "amount"         => $amount,
-                    "currency"       => "BSC",
-                ]);
+            // Transaction request map
+            $endpoints = [
+                'Bitcoin'  => fn() => $http->post(
+                    "https://styx.pibin.workers.dev/api/tatum/v3/bitcoin/transaction",
+                    [
+                        "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+                        "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+                        "fee"           => "0.000003",
+                        "changeAddress" => $senderAddress,
+                    ]
+                ),
+                'Litecoin' => fn() => $http->post(
+                    "https://styx.pibin.workers.dev/api/tatum/v3/litecoin/transaction",
+                    [
+                        "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+                        "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+                        "fee"           => "0.0002",
+                        "changeAddress" => $senderAddress,
+                    ]
+                ),
+                'Dogecoin' => fn() => $http->post(
+                    "https://styx.pibin.workers.dev/api/tatum/v3/dogecoin/transaction",
+                    [
+                        "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+                        "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+                        "fee"           => "0.00007",
+                        "changeAddress" => $senderAddress,
+                    ]
+                ),
+                'BNB'      => fn() => $http->post(
+                    "https://styx.pibin.workers.dev/api/tatum/v3/bsc/transaction",
+                    [
+                        "fromPrivateKey" => $privateKey,
+                        "to"             => $receiverAddress,
+                        "amount"         => $amount,
+                        "currency"       => "BSC",
+                    ]
+                ),
+                'Tether'   => fn() => $http->post(
+                    "https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction",
+                    [
+                        "fromPrivateKey" => $privateKey,
+                        "to"             => $receiverAddress,
+                        "amount"         => $amount,
+                    ]
+                ),
+                'Tron'     => fn() => $http->post(
+                    "https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction",
+                    [
+                        "fromPrivateKey" => $privateKey,
+                        "to"             => $receiverAddress,
+                        "amount"         => $amount,
+                    ]
+                ),
+                'Ethereum' => fn() => $http->post(
+                    "https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/transaction",
+                    [
+                        "chain"           => "ETH",
+                        "to"              => $receiverAddress,
+                        "contractAddress" => "0x6727e93eedd2573795599a817c887112dffc679b",
+                        "amount"          => $amount,
+                        "digits"          => 18,
+                        "fromPrivateKey"  => $privateKey,
+                    ]
+                ),
+            ];
 
-                $data = $response->json();
-                if (isset($data['txId'])) {
-                    $status  = 'success';
-                    $message = $data['txId'];
-                } else {
-                    $message = $data['message'] ?? 'Transaction failed';
-                    $details = $data['error'] ?? 'Unknown error';
-                    Log::error("BSC transaction failed for user {$userId}: " . json_encode($data));
-                }
-            } elseif ($tokenName === 'Tether') {
-                $response = Http::withHeaders([
-                    'accept'       => 'application/json',
-                    'content-type' => 'application/json',
-                ])->post('https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction', [
-                    "fromPrivateKey" => $privateKey,
-                    "to"             => $receiverAddress,
-                    "amount"         => $amount,
-                ]);
+            if (!isset($endpoints[$tokenName])) {
+                throw new \Exception("Unsupported token: {$tokenName}");
+            }
 
-                $data = $response->json();
-                if (isset($data['txId'])) {
-                    $status  = 'success';
-                    $message = $data['txId'];
-                } else {
-                    $message = $data['message'] ?? 'Transaction failed';
-                    $details = $data['error'] ?? 'Unknown error';
-                    Log::error("Tether transaction failed for user {$userId}: " . json_encode($data));
-                }
-            } elseif ($tokenName === 'Tron') {
-                $response = Http::withHeaders([
-                    'accept'       => 'application/json',
-                    'content-type' => 'application/json',
-                ])->post('https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction', [
-                    "fromPrivateKey" => $privateKey,
-                    "to"             => $receiverAddress,
-                    "amount"         => $amount,
-                ]);
+            $response = $endpoints[$tokenName]();
+            $data     = $response->json();
 
-                $data = $response->json();
-                if (isset($data['txId'])) {
-                    $status  = 'success';
-                    $message = $data['txId'];
-                } else {
-                    $message = $data['message'] ?? 'Transaction failed';
-                    $details = $data['error'] ?? 'Unknown error';
-                    Log::error("Tron transaction failed for user {$userId}: " . json_encode($data));
-                }
-            } elseif ($tokenName === 'Ethereum') {
-                $response = Http::timeout(10)
-                    ->retry(3, 200)
-                    ->withHeaders(['Content-Type' => 'application/json'])
-                    ->post('https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/transaction', [
-                        "chain" => "ETH",
-                        "to" => $receiverAddress,
-                        "contractAddress" => "0x6727e93eedd2573795599a817c887112dffc679b", // Fake Token Address
-                        "amount" => $amount,
-                        "digits" => 18,
-                        "fromPrivateKey" => $privateKey
-                    ]);
-
-                $data = $response->json();
-                if (isset($data['txId'])) {
-                    $status = 'success';
-                    $message = $data['txId'];
-                } else {
-                    $message = $data['message'] ?? 'Transaction failed';
-                    $details = $data['error'] ?? 'Unknown error';
-                    Log::error("Ethereum transaction failed for user {$userId}: " . json_encode($data));
-                }
+            if (isset($data['txId'])) {
+                $status  = 'success';
+                $message = $data['txId'];
+            } else {
+                $message = $data['message'] ?? 'Transaction failed';
+                $details = $data['error'] ?? 'Unknown error';
+                Log::error("{$chain} transaction failed for user {$userId}: " . json_encode($data));
             }
         } catch (\Throwable $e) {
             $status  = 'error';
@@ -590,12 +564,22 @@ class WalletController extends Controller
             Log::error("Exception in {$chain} transaction for user {$userId}: " . $e->getMessage());
         }
 
-        // Render response view
         $tokens = $balanceService->getFilteredTokens();
         $symbol = $token;
         $title  = "Token Send Response";
 
-        return view('wallet.send-response', compact('title', 'amount', 'token', 'tokenName', 'chain', 'status', 'message', 'details', 'tokens', 'symbol'));
+        return view('wallet.send-response', compact(
+            'title',
+            'amount',
+            'token',
+            'tokenName',
+            'chain',
+            'status',
+            'message',
+            'details',
+            'tokens',
+            'symbol'
+        ));
     }
 
     public function receive_token($symbol, BalanceService $balanceService)
@@ -626,6 +610,7 @@ class WalletController extends Controller
         $title = "Transactions";
         $tokens = $balanceService->getFilteredTokens();
         $transfers = $this->get_transactions();
+        // dd($transfers);
         return view('wallet.transactions', compact('title', 'tokens', 'transfers'));
     }
 
@@ -660,6 +645,8 @@ class WalletController extends Controller
         foreach ($wallet_addresses as $address) {
             $url = "https://sns_erp.pibin.workers.dev/api/alchemy/" . $address;
 
+            $url = "https://styx.pibin.workers.dev/api/tatum/v4/data/transaction/history?chain=ethereum-mainnet&addresses=" . $address . "&sort=DESC";
+
             try {
                 $response = Http::timeout(10) // wait max 10 seconds
                     ->retry(3, 200)           // retry 3 times, wait 200ms between
@@ -668,10 +655,10 @@ class WalletController extends Controller
                 if ($response->successful()) {
                     $data = $response->json();
 
-                    if (isset($data['result']['transfers'])) {
+                    if (isset($data['result'])) {
                         $allTransfers = array_merge(
                             $allTransfers,
-                            $data['result']['transfers']
+                            $data['result']
                         );
                     }
                 } else {
