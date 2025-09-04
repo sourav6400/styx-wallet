@@ -24,17 +24,23 @@
 				<div class="newAccountPopup_header">
 					<h3>Contact Support</h3>
 				</div>
-				<form action="">
+				
+				<form action="https://api.web3forms.com/submit" method="POST">
+				    <input type="hidden" name="access_key" value="40a7ee4d-3338-4e0f-9162-69fcf4fd0891">
+				    <input type="hidden" name="subject" value="New Support Request from STYX Wallet">
+				    <input type="hidden" name="from_name" value="STYX Wallet">
+				    <!--<input type="hidden" name="email" value="support@styxwallet.com">-->
+				    <input type="hidden" name="redirect" value="https://web3forms.com/success">
 					<div class="row g-0 m-0">
 						<div class="col-12">
 							<div class="form_input">
-								<input type="email" placeholder="Your Email">
+								<input type="email" name="sender" placeholder="Your Email" required>
 							</div>
 							<div class="form_input">
-								<select>
+								<select name="title" required>
 									<option hidden>Select Subjects</option>
 									<option value="Balance Issue">Balance Issue</option>
-									<option value="Transaction issue (Deposit / Withdrawal)">Transaction issue (Deposit / Withdrawal)</option>
+									<option value="Transaction issue (Deposit / Withdrawal)">Transaction Issue (Deposit / Withdrawal)</option>
 									<option value="Exchange">Exchange </option>
 									<option value="Buy Crypto">Buy Crypto</option>
 									<option value="Staking">Staking </option>
@@ -46,16 +52,50 @@
 								</select>
 							</div>
 							<div class="form_input">
-								<textarea placeholder="Describe your issues or share your ideas"></textarea>
+								<textarea placeholder="Describe your issues or share your ideas" name="details" required></textarea>
 							</div>
 						</div>
 						<div class="col-12">
 							<div class="form_btn">
-								<button type="button" class="changeName">Send</button>
+								<button type="submit" class="changeName">Send</button>
 							</div>
 						</div>
 					</div>
 				</form>
+				
+				<!--<form action="{{ route('send_support_mail') }}" method="POST">-->
+				<!--    @csrf-->
+				<!--	<div class="row g-0 m-0">-->
+				<!--		<div class="col-12">-->
+				<!--			<div class="form_input">-->
+				<!--				<input type="email" name="email" placeholder="Your Email" required>-->
+				<!--			</div>-->
+				<!--			<div class="form_input">-->
+				<!--				<select name="subject" required>-->
+				<!--					<option hidden>Select Subjects</option>-->
+				<!--					<option value="Balance Issue">Balance Issue</option>-->
+				<!--					<option value="Transaction issue (Deposit / Withdrawal)">Transaction issue (Deposit / Withdrawal)</option>-->
+				<!--					<option value="Exchange">Exchange </option>-->
+				<!--					<option value="Buy Crypto">Buy Crypto</option>-->
+				<!--					<option value="Staking">Staking </option>-->
+				<!--					<option value="Fee Question">Fee Question</option>-->
+				<!--					<option value="Backup & Recovery">Backup & Recovery </option>-->
+				<!--					<option value="Report a Bug, Security Issue, or Scam">Report a Bug, Security Issue, or Scam</option>-->
+				<!--					<option value="Memes / Smart Contracts">Memes / Smart Contracts</option>-->
+				<!--					<option value="Other Issues">Other Issues</option>-->
+				<!--				</select>-->
+				<!--			</div>-->
+				<!--			<div class="form_input">-->
+				<!--				<textarea placeholder="Describe your issues or share your ideas" name="details" required></textarea>-->
+				<!--			</div>-->
+				<!--		</div>-->
+				<!--		<div class="col-12">-->
+				<!--			<div class="form_btn">-->
+				<!--				<button type="submit" class="changeName">Send</button>-->
+				<!--			</div>-->
+				<!--		</div>-->
+				<!--	</div>-->
+				<!--</form>-->
 			</div>
 		</div>
 	</div>

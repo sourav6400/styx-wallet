@@ -16,6 +16,36 @@ use App\Http\Controllers\LockController;
 //     return redirect('/');
 // });
 
+Route::get('/test-mail-host', function () {
+    $hosts = [
+        'mail.styxwallet.com',
+        'styxwallet.com',
+        'smtp.styxwallet.com',
+        'server.styxwallet.com'
+    ];
+    
+    echo "<h3>Testing Mail Host Resolution:</h3>";
+    
+    foreach ($hosts as $host) {
+        $ip = gethostbyname($host);
+        if ($ip !== $host) {
+            echo "<p style='color: green;'>✅ {$host} resolves to: {$ip}</p>";
+        } else {
+            echo "<p style='color: red;'>❌ {$host} does not resolve</p>";
+        }
+    }
+    
+    // Also test MX records
+    echo "<h3>MX Records for styxwallet.com:</h3>";
+    if (getmxrr('styxwallet.com', $mxhosts)) {
+        foreach ($mxhosts as $mx) {
+            echo "<p>MX: {$mx}</p>";
+        }
+    } else {
+        echo "<p>No MX records found</p>";
+    }
+});
+
 Route::get('/clear-cache', function () {
     Artisan::call('config:clear');
     Artisan::call('cache:clear');
@@ -72,6 +102,7 @@ Route::middleware(['auth', 'never.logout', 'pin.lock'])->group(function () {
     Route::get('/faq', [SettingsController::class, 'faq'])->name('settings.faq');
     Route::get('/terms-conditions', [SettingsController::class, 'terms_conditions'])->name('settings.terms_conditions');
     Route::get('/support', [SettingsController::class, 'support'])->name('support');
+    Route::post('/support-email', [UserController::class, 'send_support_mail'])->name('send_support_mail');
     
     Route::post('/logout', [WalletController::class, 'logout'])->name('logout');
 });
