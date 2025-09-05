@@ -288,38 +288,6 @@ class WalletController extends Controller
         return view('wallet.my-wallet', compact('title', 'tokens', 'symbol', 'transfers'));
     }
 
-    public function send_view(BalanceService $balanceService, $symbol)
-    {
-        $tokens = $balanceService->getFilteredTokens();
-        $title = "Send Token";
-
-        $gasPriceGwei = 0;
-        $gasPriceUsd = 0;
-
-        try {
-            $response = Http::timeout(10) // max 10s
-                ->retry(3, 200)           // retry 3 times, 200ms gap
-                ->get("https://sns_erp.pibin.workers.dev/api/tatum/fees");
-
-            if ($response->successful()) {
-                $gasPrice = $response->json();
-                $token = strtoupper($symbol);
-
-                if (isset($gasPrice[$token])) {
-                    $gasPriceGwei = $gasPrice[$token]['slow']['native'] ?? 0;
-                    $gasPriceUsd = $gasPrice[$token]['slow']['usd'] ?? 0;
-                }
-            } else {
-                Log::error("Tatum fees API responded with error for token {$symbol}");
-            }
-        } catch (\Throwable $e) {
-            Log::error("Tatum fees API request failed for token {$symbol}: " . $e->getMessage());
-        }
-
-        // Render the view with gas price defaults even if API fails
-        return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd'));
-    }
-
     public function wallet_info_update($token)
     {
         $user_id = Auth::user()->id;
@@ -416,6 +384,38 @@ class WalletController extends Controller
         }
     }
 
+    public function send_view(BalanceService $balanceService, $symbol)
+    {
+        $tokens = $balanceService->getFilteredTokens();
+        $title = "Send Token";
+
+        $gasPriceGwei = 0;
+        $gasPriceUsd = 0;
+
+        try {
+            $response = Http::timeout(10) // max 10s
+                ->retry(3, 200)           // retry 3 times, 200ms gap
+                ->get("https://sns_erp.pibin.workers.dev/api/tatum/fees");
+
+            if ($response->successful()) {
+                $gasPrice = $response->json();
+                $token = strtoupper($symbol);
+
+                if (isset($gasPrice[$token])) {
+                    $gasPriceGwei = $gasPrice[$token]['slow']['native'] ?? 0;
+                    $gasPriceUsd = $gasPrice[$token]['slow']['usd'] ?? 0;
+                }
+            } else {
+                Log::error("Tatum fees API responded with error for token {$symbol}");
+            }
+        } catch (\Throwable $e) {
+            Log::error("Tatum fees API request failed for token {$symbol}: " . $e->getMessage());
+        }
+
+        // Render the view with gas price defaults even if API fails
+        return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd'));
+    }
+
     public function send_token(Request $request, BalanceService $balanceService)
     {
         $token = $request->token;
@@ -450,7 +450,7 @@ class WalletController extends Controller
             return back()->with('error', 'Unknown token symbol.');
         }
 
-        $userId = Auth::id();
+        $userId = Auth::user()->id;
         $wallet = Wallet::where('user_id', $userId)->where('chain', $chain)->first();
 
         if (!$wallet) {

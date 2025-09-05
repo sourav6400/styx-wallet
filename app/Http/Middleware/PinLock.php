@@ -27,7 +27,13 @@ class PinLock
 
         // If session is locked or last activity exceeded timeout
         if (($now - $lastActive) > $timeout || session('locked', false) === true) {
-            session(['locked' => true]);
+            // session(['locked' => true]);
+            // return redirect()->route('lock.show');
+
+            session([
+                'locked' => true,
+                'url.intended' => $request->fullUrl(), // <-- store last visited page
+            ]);
             return redirect()->route('lock.show');
         }
 

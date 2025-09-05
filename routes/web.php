@@ -12,7 +12,6 @@ use App\Http\Controllers\LockController;
 // });
 
 // Route::fallback(function () {
-//     // return response()->view('errors.404', [], 404);
 //     return redirect('/');
 // });
 

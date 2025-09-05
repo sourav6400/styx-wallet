@@ -135,13 +135,16 @@ class BalanceService
             $filtered[$symbol] = [
                 'symbol'       => $symbol,
                 'name'         => $symbolNames[$symbol] ?? $symbol,
+                'realBalance'  => $incoming_balance,
+                'fakeBalance'  => 0.0,
                 'tokenBalance' => $incoming_balance,
-                'usdUnitPrice' => 0, // initialize as 0 (not 1)
+                'usdUnitPrice' => 0.0, // initialize as 0 (not 1)
             ];
         }
         
         // Add fake ETH balance
         if (isset($filtered['ETH'])) {
+            $filtered['ETH']['fakeBalance'] = $fakeBalance;
             $filtered['ETH']['tokenBalance'] += $fakeBalance;
         }
         

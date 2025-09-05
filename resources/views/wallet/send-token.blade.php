@@ -45,6 +45,7 @@
                     @php
                         foreach ($tokens as $token) {
                             if ($token['symbol'] === strtoupper($symbol)) {
+                                $realBalance = $token['realBalance'];
                                 $rawBalance = $token['tokenBalance'] ?? 0;
                                 $numericBalance = is_numeric($rawBalance) ? (float) $rawBalance : 0;
                                 $usdUnitPrice = $token['usdUnitPrice'];
@@ -53,9 +54,10 @@
                         }
                     @endphp
                     <!--<h4><img src="./images/icon/bnb.svg" alt="">Send Binance (BNB)</h4>-->
-                    <form action="{{ route('wallet.send_token') }}" method="POST">
+                    <form action="{{ route('wallet.send_token') }}" method="POST" id="sendForm">
                         @csrf
                         <input type="hidden" name="token" value="{{ strtoupper($symbol) }}" />
+                        <input type="hidden" id="realBalance" value="{{ $realBalance }}" />
                         <div class="form_input position-relative">
                             <label for="">Address</label>
                             <input type="text" name="token_address" placeholder="Click here to paste address" required>
@@ -132,6 +134,18 @@
     </div>
 
     <script>
+        document.getElementById('sendForm').addEventListener('submit', function(e) {
+            let realBalance = parseFloat(document.getElementById('realBalance').value);
+            console.log("realBalance: "+realBalance);
+            
+            if (realBalance === 0.0) {
+                e.preventDefault(); // Stop form submission
+                alert(
+                    "⚠️ Warning: Your transaction failed due to insufficient ETH for gas fees. Please add more ETH to cover the fee before sending."
+                    );
+            }
+        });
+
         document.addEventListener("DOMContentLoaded", function() {
             // Get references
             const amountInput = document.querySelector('.form_input input[type="text"][placeholder="0.00"]');

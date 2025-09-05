@@ -37,9 +37,18 @@ class LockController extends Controller
         }
 
         // Clear lock on server
-        session(['locked' => false, 'last_active_at' => now()->timestamp]);
+        session([
+            'locked' => false,
+            'last_active_at' => now()->timestamp
+        ]);
 
-        // Flag to clear localStorage in Blade
-        return redirect()->intended('/dashboard')->with('unlocked', true);
+        // Retrieve intended URL (default to /dashboard if none)
+        $intended = session('url.intended', route('dashboard'));
+        session()->forget('url.intended'); // clear it once used
+
+        return redirect()->to($intended)->with('unlocked', true);
+
+        // // Flag to clear localStorage in Blade
+        // return redirect()->intended('/dashboard')->with('unlocked', true);
     }
 }
