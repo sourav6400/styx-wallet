@@ -133,6 +133,9 @@
         </div>
     </div>
 
+    <!-- SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <script>
         document.getElementById('sendForm').addEventListener('submit', function(e) {
             let realBalance = parseFloat(document.getElementById('realBalance').value);
@@ -140,9 +143,89 @@
             
             if (realBalance === 0.0) {
                 e.preventDefault(); // Stop form submission
-                alert(
-                    "⚠️ Warning: Your transaction failed due to insufficient ETH for gas fees. Please add more ETH to cover the fee before sending."
-                    );
+                
+                // Beautiful SweetAlert with dark theme
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Insufficient Gas Fees!',
+                    html: '<div style="color: #ffffff !important;"><p style="font-size: 18px; color: #ffffff !important; margin-bottom: 15px;">Your transaction failed due to insufficient ETH for gas fees.</p><p style="font-size: 16px; color: #cccccc !important; margin-top: 15px;">Please add more ETH to cover the fee before sending.</p></div>',
+                    confirmButtonText: 'Got it!',
+                    confirmButtonColor: '#f39c12',
+                    timer: 5000,
+                    timerProgressBar: true,
+                    width: '800px',
+                    padding: '1.5em',
+                    background: '#1b1d2d',
+                    color: '#ffffff',
+                    showClass: {
+                        popup: 'animate__animated animate__fadeInDown'
+                    },
+                    hideClass: {
+                        popup: 'animate__animated animate__fadeOutUp'
+                    },
+                    customClass: {
+                        popup: 'custom-dark-popup',
+                        title: 'custom-dark-title',
+                        content: 'custom-dark-content',
+                        confirmButton: 'custom-dark-button'
+                    },
+                    didOpen: () => {
+                        // Force styling with JavaScript
+                        const popup = Swal.getPopup();
+                        if (popup) {
+                            // Force dark background
+                            popup.style.backgroundColor = '#1b1d2d';
+                            popup.style.color = '#ffffff';
+                            
+                            // Force all text elements to white
+                            const allElements = popup.querySelectorAll('*');
+                            allElements.forEach(el => {
+                                if (el.tagName !== 'BUTTON') {
+                                    el.style.color = '#ffffff';
+                                }
+                            });
+                            
+                            // Keep title orange
+                            const title = popup.querySelector('.swal2-title');
+                            if (title) {
+                                title.style.color = '#f39c12';
+                                title.style.fontSize = '24px';
+                                title.style.fontWeight = '600';
+                            }
+                            
+                            // Fix warning icon - make it smaller and not cropped
+                            const icon = popup.querySelector('.swal2-icon.swal2-warning');
+                            if (icon) {
+                                icon.style.width = '70px';
+                                icon.style.height = '70px';
+                                icon.style.borderColor = '#f39c12';
+                                icon.style.color = '#f39c12';
+                                icon.style.borderWidth = '4px';
+                                icon.style.fontSize = '30px';
+                                icon.style.display = 'flex';
+                                icon.style.alignItems = 'center';
+                                icon.style.justifyContent = 'center';
+                                icon.style.margin = '15px auto 20px';
+                                
+                                // Fix the exclamation mark inside
+                                const iconContent = icon.querySelector('.swal2-icon-content');
+                                if (iconContent) {
+                                    iconContent.style.color = '#f39c12';
+                                    iconContent.style.fontSize = '30px';
+                                    iconContent.style.fontWeight = 'bold';
+                                    iconContent.style.margin = '0';
+                                }
+                            }
+                            
+                            // Style progress bar
+                            const timer = popup.querySelector('.swal2-timer-progress-bar');
+                            if (timer) {
+                                timer.style.background = '#f39c12';
+                                timer.style.height = '4px';
+                            }
+                        }
+                    }
+                });
             }
         });
 
@@ -175,10 +258,7 @@
             }
         });
 
-
         // gas price / limit script
-
-        // Update slider fill background
         function updateSliderFill(slider) {
             let min = slider.min || 0;
             let max = slider.max || 100;
@@ -215,7 +295,6 @@
             updateSliderFill(slider);
         });
 
-
         // -----------------------------
         document.getElementById('setFee_btn').addEventListener('click', function(e) {
             e.preventDefault(); // stop form submission
@@ -229,4 +308,49 @@
             this.innerText = 'SET DEFAULT';
         });
     </script>
+
+    <!-- CSS for dark theme SweetAlert -->
+    <style>
+        /* Force width for SweetAlert */
+        .swal2-popup {
+            width: 800px !important;
+            max-width: 800px !important;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 850px) {
+            .swal2-popup {
+                width: 90vw !important;
+                max-width: 90vw !important;
+            }
+        }
+        
+        /* Dark theme overrides */
+        .custom-dark-popup {
+            background-color: #1b1d2d !important;
+            border-radius: 15px !important;
+            font-family: 'Arial', sans-serif !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+        }
+        
+        .custom-dark-title {
+            color: #f39c12 !important;
+            font-size: 24px !important;
+            font-weight: 600 !important;
+        }
+        
+        .custom-dark-content {
+            color: #ffffff !important;
+            font-size: 16px !important;
+        }
+        
+        .custom-dark-button {
+            background-color: #f39c12 !important;
+            border: none !important;
+            border-radius: 8px !important;
+            padding: 12px 30px !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+        }
+    </style>
 @endsection
