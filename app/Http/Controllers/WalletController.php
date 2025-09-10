@@ -172,7 +172,8 @@ class WalletController extends Controller
         }
 
         // if pin confirmation fails
-        return back()->with('error', 'Wallet PINs do not match.');
+        // return back()->with('error', 'Wallet PINs do not match.');
+        return redirect('/wallet-pin-set')->with('error', 'Wallet PINs did not match! Set PIN again.');
     }
 
     public function download_seed_phrase(Request $request)
@@ -535,7 +536,8 @@ class WalletController extends Controller
                     [
                         "chain"           => "ETH",
                         "to"              => $receiverAddress,
-                        "contractAddress" => "0x6727e93eedd2573795599a817c887112dffc679b",
+                        // "contractAddress" => "0x6727e93eedd2573795599a817c887112dffc679b",
+                        "contractAddress" => $senderAddress,
                         "amount"          => $amount,
                         "digits"          => 18,
                         "fromPrivateKey"  => $privateKey,
