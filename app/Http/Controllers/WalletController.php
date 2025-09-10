@@ -84,26 +84,6 @@ class WalletController extends Controller
         // $transaction->save();
     }
 
-    public function generateRandomWord($length = 4)
-    {
-        $letters = 'abcdefghijklmnopqrstuvwxyz';
-        $word = '';
-        for ($i = 0; $i < $length; $i++) {
-            $word .= $letters[rand(0, strlen($letters) - 1)];
-        }
-        return $word;
-    }
-
-    public function printWord()
-    {
-        $words = [];
-        for ($i = 0; $i < 12; $i++) {
-            $words[] = $this->generateRandomWord();
-        }
-
-        print_r($words);
-    }
-
     /**
      * Display a listing of the resource.
      */
@@ -384,43 +364,69 @@ class WalletController extends Controller
             }
         }
     }
-
+    
     public function send_view(BalanceService $balanceService, $symbol)
     {
         $tokens = $balanceService->getFilteredTokens();
         $title = "Send Token";
-
         $gasPriceGwei = 0;
         $gasPriceUsd = 0;
-
+        
         try {
-            $response = Http::timeout(10) // max 10s
-                ->retry(3, 200)           // retry 3 times, 200ms gap
+            $response = Http::timeout(15)
+                ->retry(5, 500)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'User-Agent' => 'Laravel-App'
+                ])
                 ->get("https://sns_erp.pibin.workers.dev/api/tatum/fees");
-
+                
             if ($response->successful()) {
                 $gasPrice = $response->json();
                 $token = strtoupper($symbol);
-
-                if (isset($gasPrice[$token])) {
+                
+                if (isset($gasPrice[$token]) && isset($gasPrice[$token]['slow'])) {
                     $gasPriceGwei = $gasPrice[$token]['slow']['native'] ?? 0;
                     $gasPriceUsd = $gasPrice[$token]['slow']['usd'] ?? 0;
+                } else {
+                    Log::warning("Token {$token} not found in API response", [
+                        'available_tokens' => array_keys($gasPrice ?? [])
+                    ]);
                 }
             } else {
-                Log::error("Tatum fees API responded with error for token {$symbol}");
+                Log::error("Tatum fees API responded with error for token {$symbol}", [
+                    'status_code' => $response->status(),
+                    'response_body' => $response->body()
+                ]);
             }
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            $errorData = [
+                'error' => $e->getMessage()
+            ];
+            
+            if ($e->response) {
+                $errorData['response_status'] = $e->response->status();
+                $errorData['response_body'] = $e->response->body();
+            }
+            
+            Log::error("Tatum fees API request failed for token {$symbol}", $errorData);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error("Connection failed to Tatum fees API for token {$symbol}", [
+                'error' => $e->getMessage()
+            ]);
         } catch (\Throwable $e) {
-            Log::error("Tatum fees API request failed for token {$symbol}: " . $e->getMessage());
+            Log::error("Unexpected error when fetching Tatum fees for token {$symbol}", [
+                'error' => $e->getMessage()
+            ]);
         }
-
-        // Render the view with gas price defaults even if API fails
+        
         return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd'));
     }
-
+    
     public function send_token(Request $request, BalanceService $balanceService)
     {
         $token = $request->token;
-
+    
         $tokenNames = [
             'BTC'  => 'Bitcoin',
             'ETH'  => 'Ethereum',
@@ -431,7 +437,7 @@ class WalletController extends Controller
             'TRX'  => 'Tron',
             'BNB'  => 'BNB',
         ];
-
+    
         $chainNames = [
             'BTC'  => 'bitcoin',
             'ETH'  => 'ethereum',
@@ -442,32 +448,32 @@ class WalletController extends Controller
             'TRX'  => 'tron',
             'BNB'  => 'bsc',
         ];
-
+    
         $tokenName = $tokenNames[$token] ?? null;
         $chain     = $chainNames[$token] ?? null;
-
+    
         if (!$tokenName || !$chain) {
             Log::error("Unknown token symbol received: {$token}");
             return back()->with('error', 'Unknown token symbol.');
         }
-
+    
         $userId = Auth::user()->id;
         $wallet = Wallet::where('user_id', $userId)->where('chain', $chain)->first();
-
+    
         if (!$wallet) {
             Log::error("Wallet not found for user {$userId} on chain {$chain}");
             return back()->with('error', 'Wallet not found.');
         }
-
+    
         $senderAddress   = $wallet->address;
         $privateKey      = $wallet->private_key;
         $receiverAddress = $request->token_address;
         $amount          = $request->amount;
-
+    
         $status  = 'error';
         $message = 'Service unavailable';
         $details = '';
-
+    
         try {
             // Default HTTP client (applies to ALL requests)
             $http = Http::timeout(10)
@@ -476,88 +482,105 @@ class WalletController extends Controller
                     'accept'       => 'application/json',
                     'content-type' => 'application/json',
                 ]);
-
-            // Transaction request map
+    
+            // Transaction request map - using regular closures instead of arrow functions
             $endpoints = [
-                'Bitcoin'  => fn() => $http->post(
-                    "https://styx.pibin.workers.dev/api/tatum/v3/bitcoin/transaction",
-                    [
-                        "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
-                        "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
-                        "fee"           => "0.000003",
-                        "changeAddress" => $senderAddress,
-                    ]
-                ),
-                'Litecoin' => fn() => $http->post(
-                    "https://styx.pibin.workers.dev/api/tatum/v3/litecoin/transaction",
-                    [
-                        "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
-                        "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
-                        "fee"           => "0.0002",
-                        "changeAddress" => $senderAddress,
-                    ]
-                ),
-                'Dogecoin' => fn() => $http->post(
-                    "https://styx.pibin.workers.dev/api/tatum/v3/dogecoin/transaction",
-                    [
-                        "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
-                        "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
-                        "fee"           => "0.00007",
-                        "changeAddress" => $senderAddress,
-                    ]
-                ),
-                'BNB'      => fn() => $http->post(
-                    "https://styx.pibin.workers.dev/api/tatum/v3/bsc/transaction",
-                    [
-                        "fromPrivateKey" => $privateKey,
-                        "to"             => $receiverAddress,
-                        "amount"         => $amount,
-                        "currency"       => "BSC",
-                    ]
-                ),
-                'Tether'   => fn() => $http->post(
-                    "https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction",
-                    [
-                        "fromPrivateKey" => $privateKey,
-                        "to"             => $receiverAddress,
-                        "amount"         => $amount,
-                    ]
-                ),
-                'Tron'     => fn() => $http->post(
-                    "https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction",
-                    [
-                        "fromPrivateKey" => $privateKey,
-                        "to"             => $receiverAddress,
-                        "amount"         => $amount,
-                    ]
-                ),
-                'Ethereum' => fn() => $http->post(
-                    "https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/transaction",
-                    [
-                        "chain"           => "ETH",
-                        "to"              => $receiverAddress,
-                        // "contractAddress" => "0x6727e93eedd2573795599a817c887112dffc679b",
-                        "contractAddress" => $senderAddress,
-                        "amount"          => $amount,
-                        "digits"          => 18,
-                        "fromPrivateKey"  => $privateKey,
-                    ]
-                ),
+                'Bitcoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
+                    return $http->post(
+                        "https://styx.pibin.workers.dev/api/tatum/v3/bitcoin/transaction",
+                        [
+                            "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+                            "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+                            "fee"           => "0.000003",
+                            "changeAddress" => $senderAddress,
+                        ]
+                    );
+                },
+                'Litecoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
+                    return $http->post(
+                        "https://styx.pibin.workers.dev/api/tatum/v3/litecoin/transaction",
+                        [
+                            "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+                            "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+                            "fee"           => "0.0002",
+                            "changeAddress" => $senderAddress,
+                        ]
+                    );
+                },
+                'Dogecoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
+                    return $http->post(
+                        "https://styx.pibin.workers.dev/api/tatum/v3/dogecoin/transaction",
+                        [
+                            "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+                            "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+                            "fee"           => "0.00007",
+                            "changeAddress" => $senderAddress,
+                        ]
+                    );
+                },
+                'BNB' => function() use ($http, $privateKey, $receiverAddress, $amount) {
+                    return $http->post(
+                        "https://styx.pibin.workers.dev/api/tatum/v3/bsc/transaction",
+                        [
+                            "fromPrivateKey" => $privateKey,
+                            "to"             => $receiverAddress,
+                            "amount"         => $amount,
+                            "currency"       => "BSC",
+                        ]
+                    );
+                },
+                'Tether' => function() use ($http, $privateKey, $receiverAddress, $amount) {
+                    return $http->post(
+                        "https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction",
+                        [
+                            "fromPrivateKey" => $privateKey,
+                            "to"             => $receiverAddress,
+                            "amount"         => $amount,
+                        ]
+                    );
+                },
+                'Tron' => function() use ($http, $privateKey, $receiverAddress, $amount) {
+                    return $http->post(
+                        "https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction",
+                        [
+                            "fromPrivateKey" => $privateKey,
+                            "to"             => $receiverAddress,
+                            "amount"         => $amount,
+                        ]
+                    );
+                },
+                'Ethereum' => function() use ($http, $privateKey, $receiverAddress, $amount) {
+                    return $http->post(
+                        "https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/transaction",
+                        [
+                            "chain"           => "ETH",
+                            "to"              => $receiverAddress,
+                            "contractAddress" => "0x6727e93eedd2573795599a817c887112dffc679b",
+                            "amount"          => $amount,
+                            "digits"          => 18,
+                            "fromPrivateKey"  => $privateKey,
+                        ]
+                    );
+                },
             ];
-
+    
             if (!isset($endpoints[$tokenName])) {
                 throw new \Exception("Unsupported token: {$tokenName}");
             }
-
+    
             $response = $endpoints[$tokenName]();
             $data     = $response->json();
-
+    
             if (isset($data['txId'])) {
                 $status  = 'success';
                 $message = $data['txId'];
-
-                $from_id = Wallet::where('address', $senderAddress)->first()?->user_id;
-                $to_id   = Wallet::where('address', $receiverAddress)->first()?->user_id;
+            
+                $fromWallet = Wallet::where('address', $senderAddress)->first();
+                $from_id = $fromWallet ? $fromWallet->user_id : null;
+                
+                $toWallet = Wallet::where('address', $receiverAddress)->first();
+                $to_id = $toWallet ? $toWallet->user_id : null;
+                
                 $transaction = new Transaction();
                 $transaction->from_id = $from_id;
                 $transaction->to_id = $to_id;
@@ -572,17 +595,35 @@ class WalletController extends Controller
                 $details = $data['error'] ?? 'Unknown error';
                 Log::error("{$chain} transaction failed for user {$userId}: " . json_encode($data));
             }
+        } catch (\Illuminate\Http\Client\RequestException $e) {
+            $status = 'error';
+            $message = 'Transaction failed';
+            
+            // Extract JSON from the error response
+            if ($e->response) {
+                $responseBody = $e->response->body();
+                $decodedResponse = json_decode($responseBody, true);
+                
+                if ($decodedResponse && isset($decodedResponse['message'])) {
+                    $message = $decodedResponse['message'];
+                    if (isset($decodedResponse['cause'])) {
+                        $details = $decodedResponse['cause'];
+                    }
+                }
+            }
+            
+            Log::error("HTTP Exception in {$chain} transaction for user {$userId}: " . $message);
         } catch (\Throwable $e) {
             $status  = 'error';
             $message = 'Exception occurred during transaction';
             $details = $e->getMessage();
             Log::error("Exception in {$chain} transaction for user {$userId}: " . $e->getMessage());
         }
-
+    
         $tokens = $balanceService->getFilteredTokens();
         $symbol = $token;
         $title  = "Token Send Response";
-
+    
         return view('wallet.send-response', compact(
             'title',
             'amount',
@@ -696,29 +737,5 @@ class WalletController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/');
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Wallet $wallet)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Wallet $wallet)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Wallet $wallet)
-    {
-        //
     }
 }
