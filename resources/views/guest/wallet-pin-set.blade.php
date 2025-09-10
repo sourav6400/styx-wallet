@@ -6,6 +6,9 @@
                 <h3>Set Your Wallet PIN</h3>
                 <p>Create a secure 6-digit PIN to protect your assets</p>
             </div>
+            @if(session('error'))
+                <div class="alert alert-danger">{{ session('error') }}</div>
+            @endif
             <form action="{{ route('wallet.pin_confirm') }}" method="POST">
                 @csrf
                 <div class="walletPinSetCard_body">
