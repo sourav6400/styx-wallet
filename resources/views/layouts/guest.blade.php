@@ -34,7 +34,12 @@
     <!--[if lte IE 9]>
             <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
         <![endif]-->
-
+    @if ($errors->has('account_disabled'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ $errors->first('account_disabled') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
     {{-- Main Content --}}
     <div class="page_content">
         @yield('content')

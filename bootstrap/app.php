@@ -2,7 +2,6 @@
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
-use App\Http\Middleware\PinLock;
 use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -13,8 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->alias([
-            'never.logout' => \App\Http\Middleware\NeverLogout::class,
-            'pin.lock'     => \App\Http\Middleware\PinLock::class,
+            'never.logout'      => \App\Http\Middleware\NeverLogout::class,
+            'pin.lock'          => \App\Http\Middleware\PinLock::class,
+            'check.user.status' => \App\Http\Middleware\CheckUserStatus::class,
         ]);
         // $middleware->append(\App\Http\Middleware\NeverLogout::class); // Optional global
     })

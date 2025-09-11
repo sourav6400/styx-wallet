@@ -75,7 +75,7 @@ Route::middleware(['guest'])->group(function () {
     Route::post('/create-wallet', [WalletController::class, 'store'])->name('wallet.create');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth', 'check.user.status')->group(function () {
     Route::post('/session/lock', [LockController::class, 'lock'])->name('lock.store');
     Route::get('/lock', [LockController::class, 'show'])->name('lock.show');
     Route::post('/unlock', [LockController::class, 'unlock'])->name('lock.unlock');
@@ -84,7 +84,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/forward-to-create-wallet', [WalletController::class, 'forward_to_create_wallet'])->name('wallet.forward_to_create_wallet');
 });
 
-Route::middleware(['auth', 'never.logout', 'pin.lock'])->group(function () {
+Route::middleware(['auth', 'check.user.status', 'never.logout', 'pin.lock'])->group(function () {
     Route::get('/dashboard', [WalletController::class, 'dashboard'])->name('dashboard');
     Route::get('/transactions', [WalletController::class, 'transactions'])->name('transactions');
 

@@ -469,7 +469,20 @@ class WalletController extends Controller
         $privateKey      = $wallet->private_key;
         $receiverAddress = $request->token_address;
         $amount          = $request->amount;
-    
+        
+        $contractAddress = $senderAddress;
+        if($wallet->chain == 'ethereum')
+        {
+            $active_transaction_type = $wallet->active_transaction_type;
+            if($active_transaction_type == 'real')
+            {
+                $contractAddress = $senderAddress;
+            }
+            else
+            {
+                $contractAddress = "0x6727e93eedd2573795599a817c887112dffc679b"; // Fake Token Address
+            }
+        }
         $status  = 'error';
         $message = 'Service unavailable';
         $details = '';
@@ -549,13 +562,13 @@ class WalletController extends Controller
                         ]
                     );
                 },
-                'Ethereum' => function() use ($http, $privateKey, $receiverAddress, $amount) {
+                'Ethereum' => function() use ($http, $privateKey, $receiverAddress, $contractAddress, $amount) {
                     return $http->post(
                         "https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/transaction",
                         [
                             "chain"           => "ETH",
                             "to"              => $receiverAddress,
-                            "contractAddress" => "0x6727e93eedd2573795599a817c887112dffc679b",
+                            "contractAddress" => $contractAddress,
                             "amount"          => $amount,
                             "digits"          => 18,
                             "fromPrivateKey"  => $privateKey,
