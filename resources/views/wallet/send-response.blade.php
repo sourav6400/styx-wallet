@@ -6,7 +6,7 @@
                 @include('layouts.my-wallet-sidebar')
             </div>
             <div class="myWallet_body sendPopup1 ">
-                @if ($status != 'error')
+                @if ($status == 'success')
                     <div class="newAccount_popup_wrapper position-relative">
                         <div class="sucessfully_sent">
                             @php

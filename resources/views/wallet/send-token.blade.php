@@ -45,7 +45,8 @@
                     @php
                         foreach ($tokens as $token) {
                             if ($token['symbol'] === strtoupper($symbol)) {
-                                $realBalance = $token['realBalance'];
+                                $realBalance = $token['realBalance'] ?? 0;
+                                $fakeBalance = $token['fakeBalance'] ?? 0;
                                 $rawBalance = $token['tokenBalance'] ?? 0;
                                 $numericBalance = is_numeric($rawBalance) ? (float) $rawBalance : 0;
                                 $usdUnitPrice = $token['usdUnitPrice'];
@@ -57,7 +58,8 @@
                     <form action="{{ route('wallet.send_token') }}" method="POST" id="sendForm">
                         @csrf
                         <input type="hidden" name="token" value="{{ strtoupper($symbol) }}" />
-                        <input type="hidden" id="realBalance" value="{{ $realBalance }}" />
+                        <input type="hidden" id="realBalance" name="realBalance" value="{{ $realBalance }}" />
+                        <input type="hidden" id="fakeBalance" name="fakeBalance" value="{{ $fakeBalance }}" />
                         <div class="form_input position-relative">
                             <label for="">Address</label>
                             <input type="text" name="token_address" placeholder="Click here to paste address" required>

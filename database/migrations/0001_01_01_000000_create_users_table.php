@@ -20,8 +20,8 @@ return new class extends Migration
             $table->string('pin_hash')->nullable();
             $table->string('phrase12')->nullable()->unique();
             $table->string('phrase24')->nullable()->unique();
-            $table->enum('status', ['Active', 'Banned', 'Suspended'])->default('Active');
             $table->decimal('balance', 15, 4)->default(0);
+            $table->enum('status', ['Active', 'Banned', 'Suspended'])->default('Active');
             $table->rememberToken();
             $table->timestamps();
         });

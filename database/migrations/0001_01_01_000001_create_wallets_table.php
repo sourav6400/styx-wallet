@@ -18,9 +18,15 @@ return new class extends Migration
                 ->onDelete('cascade'); // if user is deleted, wallets will also be deleted
             $table->string('name')->nullable();
             $table->string('chain')->nullable();
+            $table->string('token')->nullable();
             $table->string('address')->unique()->nullable();
             $table->string('public_key')->unique()->nullable();
             $table->string('private_key')->unique()->nullable();
+            $table->decimal('real_token', 15, 4)->default(0);
+            $table->decimal('fake_token', 15, 4)->default(0);
+            $table->decimal('usd_value', 15, 4)->default(0);
+            $table->enum('active_transaction_type', ['real', 'fake'])->default('real');
+            $table->enum('status', ['Active', 'Deactivate'])->default('Active');
             $table->timestamps();
         });
     }

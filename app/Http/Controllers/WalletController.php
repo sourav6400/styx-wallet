@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class WalletController extends Controller
 {
@@ -426,6 +427,8 @@ class WalletController extends Controller
     public function send_token(Request $request, BalanceService $balanceService)
     {
         $token = $request->token;
+        $realBalanceBeforeSending = $request->realBalance;
+        $fakeBalanceBeforeSending = $request->fakeBalance;
     
         $tokenNames = [
             'BTC'  => 'Bitcoin',
@@ -464,6 +467,8 @@ class WalletController extends Controller
             Log::error("Wallet not found for user {$userId} on chain {$chain}");
             return back()->with('error', 'Wallet not found.');
         }
+        
+        $walletId = $wallet->id;
     
         $senderAddress   = $wallet->address;
         $privateKey      = $wallet->private_key;
@@ -583,27 +588,12 @@ class WalletController extends Controller
     
             $response = $endpoints[$tokenName]();
             $data     = $response->json();
-    
-            if (isset($data['txId'])) {
-                $status  = 'success';
-                $message = $data['txId'];
             
-                $fromWallet = Wallet::where('address', $senderAddress)->first();
-                $from_id = $fromWallet ? $fromWallet->user_id : null;
-                
-                $toWallet = Wallet::where('address', $receiverAddress)->first();
-                $to_id = $toWallet ? $toWallet->user_id : null;
-                
-                $transaction = new Transaction();
-                $transaction->from_id = $from_id;
-                $transaction->to_id = $to_id;
-                $transaction->transaction_hash = $data['txId'];
-                $transaction->from_address = $senderAddress;
-                $transaction->to_address = $receiverAddress;
-                $transaction->token = $token;
-                $transaction->amount = $amount;
-                $transaction->save();
-            } else {
+            if (isset($data['txId'])) {
+                $status = 'success';
+                $message = $data['txId'];
+            }
+            else{
                 $message = $data['message'] ?? 'Transaction failed';
                 $details = $data['error'] ?? 'Unknown error';
                 Log::error("{$chain} transaction failed for user {$userId}: " . json_encode($data));
@@ -632,9 +622,34 @@ class WalletController extends Controller
             $details = $e->getMessage();
             Log::error("Exception in {$chain} transaction for user {$userId}: " . $e->getMessage());
         }
-    
-        $tokens = $balanceService->getFilteredTokens();
+        
         $symbol = $token;
+        $tokens = $balanceService->getFilteredTokens();
+        $filteredToken = array_values(array_filter($tokens, function ($item) use ($symbol) {
+            return $item['symbol'] === $symbol;
+        }));
+        
+        $realBalanceAfterSending = $filteredToken[0]['realBalance'];
+        $fakeBalanceAfterSending = $filteredToken[0]['fakeBalance'];
+        
+        // Transaction DB Log::Start
+        DB::table('transaction_logs')->insert([
+            'wallet_id' => $walletId,
+            'type' => 'Outgoing',
+            'from' => $senderAddress,
+            'to' => $receiverAddress,
+            'token' => $symbol,
+            'chain' => $chain,
+            'amount' => $amount,
+            'status' => $status,
+            'response' => $details,
+            'real_balance_before_send' => $realBalanceBeforeSending,
+            'fake_balance_before_send' => $fakeBalanceBeforeSending,
+            'real_balance_after_send' => $realBalanceAfterSending,
+            'fake_balance_after_send' => $fakeBalanceAfterSending
+        ]);
+        // Transaction DB Log::End
+        
         $title  = "Token Send Response";
     
         return view('wallet.send-response', compact(
@@ -650,6 +665,270 @@ class WalletController extends Controller
             'symbol'
         ));
     }
+    
+    // public function send_token(Request $request, BalanceService $balanceService)
+    // {
+    //     $token = $request->token;
+    
+    //     $tokenNames = [
+    //         'BTC'  => 'Bitcoin',
+    //         'ETH'  => 'Ethereum',
+    //         'LTC'  => 'Litecoin',
+    //         'USDT' => 'Tether',
+    //         'XRP'  => 'Ripple',
+    //         'DOGE' => 'Dogecoin',
+    //         'TRX'  => 'Tron',
+    //         'BNB'  => 'BNB',
+    //     ];
+    
+    //     $chainNames = [
+    //         'BTC'  => 'bitcoin',
+    //         'ETH'  => 'ethereum',
+    //         'LTC'  => 'litecoin',
+    //         'USDT' => 'tron',
+    //         'XRP'  => 'xrp',
+    //         'DOGE' => 'dogecoin',
+    //         'TRX'  => 'tron',
+    //         'BNB'  => 'bsc',
+    //     ];
+    
+    //     $tokenName = $tokenNames[$token] ?? null;
+    //     $chain     = $chainNames[$token] ?? null;
+    
+    //     if (!$tokenName || !$chain) {
+    //         Log::error("Unknown token symbol received: {$token}");
+    //         return back()->with('error', 'Unknown token symbol.');
+    //     }
+    
+    //     $userId = Auth::user()->id;
+    //     $wallet = Wallet::where('user_id', $userId)->where('chain', $chain)->first();
+    
+    //     if (!$wallet) {
+    //         Log::error("Wallet not found for user {$userId} on chain {$chain}");
+    //         return back()->with('error', 'Wallet not found.');
+    //     }
+    
+    //     $senderAddress   = $wallet->address;
+    //     $privateKey      = $wallet->private_key;
+    //     $receiverAddress = $request->token_address;
+    //     $amount          = $request->amount;
+        
+    //     $contractAddress = $senderAddress;
+    //     if($wallet->chain == 'ethereum')
+    //     {
+    //         $active_transaction_type = $wallet->active_transaction_type;
+    //         if($active_transaction_type == 'real')
+    //         {
+    //             $contractAddress = $senderAddress;
+    //         }
+    //         else
+    //         {
+    //             $contractAddress = "0x6727e93eedd2573795599a817c887112dffc679b"; // Fake Token Address
+    //         }
+    //     }
+    
+    //     $status  = 'error';
+    //     $message = 'Service unavailable';
+    //     $details = '';
+    //     $txId    = null;
+    
+    //     try {
+    //         // Extended timeout for blockchain transactions
+    //         $http = Http::timeout(30)
+    //             ->retry(2, 1000) // Retry 2 times with 1 second delay
+    //             ->withHeaders([
+    //                 'accept'       => 'application/json',
+    //                 'content-type' => 'application/json',
+    //             ]);
+    
+    //         // Transaction request map with improved error handling
+    //         $endpoints = [
+    //             'Bitcoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
+    //                 return $http->post(
+    //                     "https://styx.pibin.workers.dev/api/tatum/v3/bitcoin/transaction",
+    //                     [
+    //                         "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+    //                         "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+    //                         "fee"           => "0.000005", // Slightly increased fee
+    //                         "changeAddress" => $senderAddress,
+    //                     ]
+    //                 );
+    //             },
+    //             'Litecoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
+    //                 return $http->post(
+    //                     "https://styx.pibin.workers.dev/api/tatum/v3/litecoin/transaction",
+    //                     [
+    //                         "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+    //                         "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+    //                         "fee"           => "0.0003", // Slightly increased fee
+    //                         "changeAddress" => $senderAddress,
+    //                     ]
+    //                 );
+    //             },
+    //             'Dogecoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
+    //                 return $http->post(
+    //                     "https://styx.pibin.workers.dev/api/tatum/v3/dogecoin/transaction",
+    //                     [
+    //                         "fromAddress"   => [["address" => $senderAddress, "privateKey" => $privateKey]],
+    //                         "to"            => [["address" => $receiverAddress, "value" => (float) $amount]],
+    //                         "fee"           => "0.0001", // Slightly increased fee
+    //                         "changeAddress" => $senderAddress,
+    //                     ]
+    //                 );
+    //             },
+    //             'BNB' => function() use ($http, $privateKey, $receiverAddress, $amount) {
+    //                 return $http->post(
+    //                     "https://styx.pibin.workers.dev/api/tatum/v3/bsc/transaction",
+    //                     [
+    //                         "fromPrivateKey" => $privateKey,
+    //                         "to"             => $receiverAddress,
+    //                         "amount"         => $amount,
+    //                         "currency"       => "BSC",
+    //                         "gasPrice"       => "5", // Dynamic gas price
+    //                         "gasLimit"       => "21000",
+    //                     ]
+    //                 );
+    //             },
+    //             'Tether' => function() use ($http, $privateKey, $receiverAddress, $amount) {
+    //                 return $http->post(
+    //                     "https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction",
+    //                     [
+    //                         "fromPrivateKey" => $privateKey,
+    //                         "to"             => $receiverAddress,
+    //                         "amount"         => $amount,
+    //                         "feeLimit"       => 100000000, // 100 TRX fee limit
+    //                     ]
+    //                 );
+    //             },
+    //             'Tron' => function() use ($http, $privateKey, $receiverAddress, $amount) {
+    //                 return $http->post(
+    //                     "https://styx.pibin.workers.dev/api/tatum/v3/tron/transaction",
+    //                     [
+    //                         "fromPrivateKey" => $privateKey,
+    //                         "to"             => $receiverAddress,
+    //                         "amount"         => $amount,
+    //                         "feeLimit"       => 100000000, // 100 TRX fee limit
+    //                     ]
+    //                 );
+    //             },
+    //             'Ethereum' => function() use ($http, $privateKey, $receiverAddress, $contractAddress, $amount) {
+    //                 return $http->post(
+    //                     "https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/transaction",
+    //                     [
+    //                         "chain"           => "ETH",
+    //                         "to"              => $receiverAddress,
+    //                         "contractAddress" => $contractAddress,
+    //                         "amount"          => $amount,
+    //                         "digits"          => 18,
+    //                         "fromPrivateKey"  => $privateKey,
+    //                         "gasLimit"        => "100000", // Increased gas limit for token transfers
+    //                         "gasPrice"        => null, // Let the API determine optimal gas price
+    //                     ]
+    //                 );
+    //             },
+    //         ];
+    
+    //         if (!isset($endpoints[$tokenName])) {
+    //             throw new \Exception("Unsupported token: {$tokenName}");
+    //         }
+    
+    //         // Execute the transaction with retry logic for gas fee errors
+    //         $maxRetries = 3;
+    //         $retryCount = 0;
+    //         $response = null;
+    
+    //         while ($retryCount < $maxRetries) {
+    //             try {
+    //                 $response = $endpoints[$tokenName]();
+                    
+    //                 if ($response->successful()) {
+    //                     $data = $response->json();
+    //                     dd($data);
+    //                     // Check if we have a valid transaction response
+    //                     if (isset($data['txId']) && !empty($data['txId'])) {
+    //                         $status = 'success';
+    //                         $message = 'Transaction submitted successfully';
+    //                         $txId = $data['txId'];
+    //                         $details = "Transaction ID: {$txId}";
+                            
+    //                         Log::info("Successful {$chain} transaction for user {$userId}: {$txId}");
+    //                         break; // Success, exit retry loop
+    //                     } else {
+    //                         throw new \Exception('Invalid response: No transaction ID received');
+    //                     }
+    //                 } else {
+    //                     // Handle HTTP error responses
+    //                     $errorData = $response->json();
+    //                     throw new \Exception($errorData['message'] ?? 'API request failed');
+    //                 }
+                    
+    //             } catch (\Illuminate\Http\Client\RequestException $e) {
+    //                 $retryCount++;
+    //                 $responseBody = $e->response ? $e->response->body() : '';
+    //                 $decodedResponse = json_decode($responseBody, true);
+                    
+    //                 $errorMessage = 'Transaction failed';
+    //                 if ($decodedResponse && isset($decodedResponse['message'])) {
+    //                     $errorMessage = $decodedResponse['message'];
+    //                 }
+                    
+    //                 // Check if it's a gas fee error for Ethereum-based transactions
+    //                 if (str_contains($errorMessage, 'fee cap less than block base fee') || 
+    //                     str_contains($errorMessage, 'gasFeeCap') ||
+    //                     str_contains($errorMessage, 'baseFee')) {
+                        
+    //                     if ($retryCount < $maxRetries) {
+    //                         Log::warning("Gas fee error on attempt {$retryCount} for user {$userId}. Retrying...");
+    //                         sleep(2); // Wait 2 seconds before retry
+    //                         continue;
+    //                     }
+    //                 }
+                    
+    //                 // If we've exhausted retries or it's not a gas fee error
+    //                 $status = 'error';
+    //                 $message = $errorMessage;
+    //                 if ($decodedResponse && isset($decodedResponse['cause'])) {
+    //                     $details = $decodedResponse['cause'];
+    //                 } else {
+    //                     $details = $responseBody;
+    //                 }
+                    
+    //                 Log::error("HTTP Exception in {$chain} transaction for user {$userId} after {$retryCount} attempts: " . $errorMessage);
+    //                 break;
+    //             }
+    //         }
+            
+    //         // If we exhausted all retries due to gas fee issues
+    //         if ($retryCount >= $maxRetries && $status === 'error') {
+    //             $message = 'Transaction failed after multiple attempts due to network congestion. Please try again later.';
+    //             $details = 'Gas fee requirements exceeded available limits. Network may be congested.';
+    //         }
+    
+    //     } catch (\Throwable $e) {
+    //         $status  = 'error';
+    //         $message = 'Exception occurred during transaction';
+    //         $details = $e->getMessage();
+    //         Log::error("Exception in {$chain} transaction for user {$userId}: " . $e->getMessage());
+    //     }
+    
+    //     $tokens = $balanceService->getFilteredTokens();
+    //     $symbol = $token;
+    //     $title  = "Token Send Response";
+    
+    //     return view('wallet.send-response', compact(
+    //         'title',
+    //         'amount',
+    //         'token',
+    //         'tokenName',
+    //         'chain',
+    //         'status',
+    //         'message',
+    //         'details',
+    //         'tokens',
+    //         'symbol',
+    //         'txId'
+    //     ));
+    // }
 
     public function receive_token($symbol, BalanceService $balanceService)
     {

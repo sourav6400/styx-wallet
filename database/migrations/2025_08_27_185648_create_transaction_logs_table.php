@@ -22,6 +22,10 @@ return new class extends Migration
             $table->string('amount')->nullable();
             $table->string('status')->nullable();
             $table->longText('response')->nullable();
+            $table->longText('real_balance_before_send')->nullable();
+            $table->longText('fake_balance_before_send')->nullable();
+            $table->longText('real_balance_after_send')->nullable();
+            $table->longText('fake_balance_after_send')->nullable();
             $table->timestamps();
         });
     }
