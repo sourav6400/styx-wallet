@@ -122,7 +122,7 @@ class BalanceService
                             $balance = (float) (($data['balance'] ?? 0));
                         }
                         else {
-                            $balance = (float) ($data['incoming'] ?? 0);
+                            $balance = (float) (($data['incoming'] - $data['outgoing']) ?? 0);
                         }
         
                         $incoming_balance = $balance;

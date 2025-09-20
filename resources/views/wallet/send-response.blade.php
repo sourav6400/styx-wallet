@@ -33,30 +33,33 @@
                         </div>
                     </div>
                 @else
-                    <div class="error_message">
-                        <div class="error_icon">
-                            <svg width="60" height="60" viewBox="0 0 24 24" fill="none"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="12" cy="12" r="10" fill="#ff4444" stroke="#cc0000"
-                                    stroke-width="2" />
-                                <path d="M15 9l-6 6m0-6l6 6" stroke="white" stroke-width="2" stroke-linecap="round" />
-                            </svg>
+                    <div class="error-card">
+                        <!-- Error Icon -->
+                        <div class="icon-container">
+                            <div class="error-icon">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </div>
                         </div>
-                        <h3 class="error_title">Transaction Failed</h3>
-                        <div class="error_content">
-                            <p class="error_message_text">{{ $message }}</p>
+
+                        <!-- Error Title -->
+                        <h1 class="error-title">
+                            Transaction Failed!
+                        </h1>
+
+                        <!-- Error Description -->
+                        <div class="error-description">
+                            <p>{{ $message }}</p>
                             @if ($details)
                                 <p class="error_details">{{ $details }}</p>
                             @endif
                         </div>
-                        <div class="error_actions">
-                            <a href="{{ route('wallet.send_token_s1', strtolower($token)) }}" class="btn btn-retry">
-                                Try Again
-                            </a>
-                            <a href="{{ route('wallet.by_token', strtolower($token)) }}" class="btn btn-back">
-                                Back to Wallet
-                            </a>
-                        </div>
+
+                        <!-- Action Button -->
+                        <a href="{{ route('wallet.send_token_s1', strtolower($token)) }}" class="error-button">
+                            Try Again
+                        </a>
                     </div>
                 @endif
             </div>
@@ -64,129 +67,129 @@
     </div>
 
     <style>
-        .error_message {
+        .error-card {
+            position: relative;
+            z-index: 2;
+            background: #1B1D2D;
+            border-radius: 24px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
             text-align: center;
-            padding: 40px 30px;
-            background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%);
-            border: 2px solid #ff5722;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(255, 68, 68, 0.15);
-            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(75, 85, 99, 0.5);
+            animation: bounce-in 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             margin: 0 auto;
         }
 
-        .error_icon {
-            margin-bottom: 20px;
-            animation: shake 0.5s ease-in-out;
-        }
+        @keyframes bounce-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) translateY(-50px);
+            }
 
-        @keyframes shake {
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05) translateY(0);
+            }
 
-            0%,
+            70% {
+                transform: scale(0.95);
+            }
+
             100% {
-                transform: translateX(0);
-            }
-
-            25% {
-                transform: translateX(-5px);
-            }
-
-            75% {
-                transform: translateX(5px);
+                opacity: 1;
+                transform: scale(1);
             }
         }
 
-        .error_title {
-            color: #d32f2f;
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 20px;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        }
-
-        .error_content {
-            margin-bottom: 30px;
-        }
-
-        .error_message_text {
-            color: #c62828;
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 10px;
-            line-height: 1.4;
-        }
-
-        .error_details {
-            color: #666;
-            font-size: 14px;
-            line-height: 1.4;
-            background: rgba(255, 255, 255, 0.7);
-            padding: 12px;
-            border-radius: 8px;
-            border-left: 4px solid #ff9800;
-            margin-top: 15px;
-        }
-
-        .error_actions {
+        .icon-container {
+            margin-bottom: 32px;
             display: flex;
-            gap: 15px;
             justify-content: center;
-            flex-wrap: wrap;
         }
 
-        .btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            text-decoration: none;
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .error-icon svg {
+            width: 40px;
+            height: 40px;
+            color: white;
+            stroke-width: 2.5;
+        }
+
+        .error-title {
+            font-size: 30px;
+            font-weight: 700;
+            color: #f87171;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .error-description {
+            margin-bottom: 32px;
+        }
+
+        .error-description p {
+            color: #d1d5db;
+            font-size: 18px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .error-button {
+            width: 100%;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
             font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
+            padding: 16px 32px;
+            border-radius: 12px;
             border: none;
             cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
         }
 
-        .btn-retry {
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+        .error-button:hover {
+            box-shadow: 0 10px 25px -3px rgba(239, 68, 68, 0.25);
         }
 
-        .btn-retry:hover {
-            background: linear-gradient(135deg, #ff5722 0%, #f57c00 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
-            color: white;
+        .error-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
         }
 
-        .btn-back {
-            background: #f5f5f5;
-            color: #666;
-            border: 2px solid #ddd;
-        }
-
-        .btn-back:hover {
-            background: #e0e0e0;
-            color: #333;
-            transform: translateY(-1px);
-        }
-
-        /* Responsive design */
-        @media (max-width: 480px) {
-            .error_message {
-                padding: 30px 20px;
-                margin: 0 15px;
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .error-card {
+                padding: 32px;
+                margin: 16px;
             }
 
-            .error_actions {
-                flex-direction: column;
+            .error-title {
+                font-size: 24px;
             }
 
-            .btn {
-                width: 100%;
-                justify-content: center;
+            .error-description p {
+                font-size: 16px;
+            }
+
+            .error-icon {
+                width: 64px;
+                height: 64px;
+            }
+
+            .error-icon svg {
+                width: 32px;
+                height: 32px;
             }
         }
     </style>
