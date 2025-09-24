@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('phrase12')->nullable()->unique();
             $table->string('phrase24')->nullable()->unique();
             $table->decimal('balance', 15, 4)->default(0);
+            $table->string('firebase_token')->nullable();
             $table->enum('status', ['Active', 'Banned', 'Suspended'])->default('Active');
             $table->rememberToken();
             $table->timestamps();
