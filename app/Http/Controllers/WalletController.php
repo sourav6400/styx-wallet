@@ -912,7 +912,6 @@ class WalletController extends Controller
         $title = "Transactions";
         $tokens = $balanceService->getFilteredTokens();
         $transfers = $this->get_transactions();
-        // dd($transfers);
         return view('wallet.transactions', compact('title', 'tokens', 'transfers'));
     }
 
@@ -945,9 +944,7 @@ class WalletController extends Controller
         $allTransfers = [];
 
         foreach ($wallet_addresses as $address) {
-            $url = "https://sns_erp.pibin.workers.dev/api/alchemy/" . $address;
-
-            $url = "https://styx.pibin.workers.dev/api/tatum/v4/data/transaction/history?chain=ethereum-mainnet&addresses=" . $address . "&sort=DESC";
+            $url = "https://styx.pibin.workers.dev/api/tatum/v4/data/transaction/history?chain=ethereum-mainnet&addresses=" . $address . "&sort=ASC";
 
             try {
                 $response = Http::timeout(10) // wait max 10 seconds

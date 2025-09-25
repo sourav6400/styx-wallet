@@ -66,24 +66,37 @@
                         <table id="dataTable">
                             <thead>
                                 <tr>
+                                    <th>SL#</th>
                                     <th>Transaction Hash</th>
                                     <th>Block</th>
                                     <th>From</th>
                                     <th>To</th>
                                     <th>Type</th>
                                     <th>Amount</th>
+                                    <th>Time</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                @php $sl = 0; @endphp
                                 @foreach ($transfers as $key => $value)
                                     @php $transactionSubtype = $value['transactionSubtype']; @endphp
                                     @if ($transactionSubtype == 'incoming' || $transactionSubtype == 'outgoing')
+                                        @php $sl = $sl + 1; @endphp
                                         <tr>
+                                            <td>
+                                                <div class="value_data">
+                                                    <h5>{{ $sl }}</h5>
+                                                </div>
+                                            </td>
                                             <td>
                                                 @php
                                                     $hash_full = $value['hash'];
                                                     $hash_short =
                                                         substr($hash_full, 0, 10) . '...' . substr($hash_full, -8);
+                                                    $timestampMs = $value['timestamp']; // from your array
+                                                    $timestampSec = $timestampMs / 1000; // convert ms → s
+
+                                                    $dateTime = date('Y-m-d H:i a', $timestampSec);
                                                 @endphp
                                                 <div class="value_data">
                                                     <div class="flex-center">
@@ -144,7 +157,13 @@
                                             </td>
                                             <td>
                                                 <div class="value_data">
-                                                    <h5>{{ $value['amount'] }} {{ $value['chain'] }}</h5>
+                                                    {{-- {{ $value['chain'] }} --}}
+                                                    <h5>{{ number_format(abs($value['amount']), 6, '.', '') }} ETH</h5>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="value_data">
+                                                    <h5>{{ $dateTime }}</h5>
                                                 </div>
                                             </td>
                                         </tr>
