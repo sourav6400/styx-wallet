@@ -153,7 +153,7 @@
             // Auto close after 5 seconds
             setTimeout(() => {
                 alert.classList.remove('show');
-            }, 5000);
+            }, 3000);
         }
     </script>
 @endsection

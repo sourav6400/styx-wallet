@@ -64,27 +64,6 @@ class WalletController extends Controller
         }
     }
 
-    public function test()
-    {
-        // $senderAddress = "0x41a22dbdce35c27ccc01306bad3e0de3d5f71b85";
-        // $receiverAddress = "0xe8a162f3a8c1dc6df923fde04703beaf17c4678d";
-        // $token = "ETH";
-        // $amount = 5;
-        // $data['txId'] = "0x2491784c32abdbcea35550e53267b9b49856ec31e7064f12e405793a32b78547";
-
-        // $from_id = Wallet::where('address', $senderAddress)->first()?->user_id;
-        // $to_id   = Wallet::where('address', $receiverAddress)->first()?->user_id;
-        // $transaction = new Transaction();
-        // $transaction->from_id = $from_id;
-        // $transaction->to_id = $to_id;
-        // $transaction->transaction_hash = $data['txId'];
-        // $transaction->from_address = $senderAddress;
-        // $transaction->to_address = $receiverAddress;
-        // $transaction->token = $token;
-        // $transaction->amount = $amount;
-        // $transaction->save();
-    }
-
     /**
      * Display a listing of the resource.
      */
@@ -425,8 +404,6 @@ class WalletController extends Controller
     }
 
     // New Send Token Section :: Start
-
-
     public function send_token(Request $request, BalanceService $balanceService)
     {
         $token = $request->token;
@@ -468,11 +445,53 @@ class WalletController extends Controller
         $privateKey = $wallet->private_key;
         $receiverAddress = $request->token_address;
         $amount = $request->amount;
+        $destinationTag = $request->destination_tag ?? null;
 
         // Handle Ethereum contract address logic
         $contractAddress = $senderAddress;
         if ($wallet->chain == 'ethereum' && $wallet->active_transaction_type !== 'real') {
             $contractAddress = "0x6727e93eedd2573795599a817c887112dffc679b";
+        }
+
+        // For Ethereum transactions, check if user has enough ETH for gas fees
+        if ($tokenName === 'Ethereum') {
+            $ethWallet = Wallet::where('user_id', $userId)->where('chain', 'ethereum')->first();
+            if ($ethWallet) {
+                $ethBalance = $this->getEthereumBalance($ethWallet->address);
+                $gasPrices = $this->getEthereumGasPrices();
+                $estimatedGasCost = (float) $gasPrices['maxFeePerGas'] * (int) $gasPrices['gasLimit'];
+                $estimatedGasCostEth = $estimatedGasCost / 1000000000000000000; // Convert Wei to ETH
+
+                if ($ethBalance < $estimatedGasCostEth) {
+                    Log::error("Insufficient ETH for gas fees. Required: {$estimatedGasCostEth}, Available: {$ethBalance}");
+                    return back()->with('error', 'Insufficient ETH balance for gas fees. Please add more ETH to your wallet.');
+                }
+            }
+        }
+
+        // For XRP transactions, validate destination tag and amount
+        if ($tokenName === 'Ripple') {
+            // Validate destination tag if provided
+            if (!empty($destinationTag)) {
+                $destinationTagInt = (int) $destinationTag;
+                if ($destinationTagInt < 0 || $destinationTagInt > 4294967295) {
+                    Log::error("Invalid XRP destination tag: {$destinationTag}");
+                    return back()->with('error', 'Invalid destination tag. Must be between 0 and 4294967295.');
+                }
+            }
+
+            // Validate XRP amount (minimum 0.000001 XRP)
+            $xrpAmount = (float) $amount;
+            if ($xrpAmount < 0.000001) {
+                Log::error("XRP amount too small: {$xrpAmount}");
+                return back()->with('error', 'Minimum XRP amount is 0.000001 XRP.');
+            }
+
+            // Validate XRP address format
+            if (!$this->isValidXrpAddress($receiverAddress)) {
+                Log::error("Invalid XRP address: {$receiverAddress}");
+                return back()->with('error', 'Invalid XRP address format.');
+            }
         }
 
         // Initialize response
@@ -492,7 +511,8 @@ class WalletController extends Controller
             'privateKey' => $privateKey,
             'receiverAddress' => $receiverAddress,
             'contractAddress' => $contractAddress,
-            'amount' => $amount
+            'amount' => $amount,
+            'destinationTag' => $destinationTag
         ]);
 
         // Handle response
@@ -614,34 +634,254 @@ class WalletController extends Controller
                     "amount" => $params['amount'],
                 ]);
             },
-            
+
             'Ripple' => function () use ($http, $params) {
-                return $http->post("https://styx.pibin.workers.dev/api/tatum/v3/xrp/transaction", [
+                // Convert XRP amount to drops (1 XRP = 1,000,000 drops)
+                // $amountInDrops = (float) $params['amount'] * 1000000;
+
+                $requestData = [
                     "fromAccount" => $params['senderAddress'],
                     "to" => $params['receiverAddress'],
+                    // "amount" => (string) $amountInDrops,
                     "amount" => $params['amount'],
                     "fromSecret" => $params['privateKey'],
+                ];
+
+                // Add destinationTag if provided (must be numeric)
+                if (!empty($params['destinationTag'])) {
+                    $destinationTag = (int) $params['destinationTag'];
+                    if ($destinationTag > 0) {
+                        $requestData["destinationTag"] = $destinationTag;
+                    }
+                }
+
+                Log::info("XRP Transaction Request", [
+                    'fromAccount' => $params['senderAddress'],
+                    'to' => $params['receiverAddress'],
+                    'amount' => $params['amount'],
+                    'destinationTag' => $params['destinationTag'] ?? null,
+                    'request_data' => $requestData
                 ]);
+
+                return $http->post("https://styx.pibin.workers.dev/api/tatum/v3/xrp/transaction", $requestData);
             },
 
             'Ethereum' => function () use ($http, $params) {
-                return $http->post("https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/transaction", [
+                // Get current gas prices for Ethereum
+                $gasPrices = $this->getEthereumGasPrices();
+
+                $requestData = [
                     "chain" => "ETH",
                     "to" => $params['receiverAddress'],
                     "contractAddress" => $params['contractAddress'],
                     "amount" => $params['amount'],
                     "digits" => 18,
                     "fromPrivateKey" => $params['privateKey'],
-                ]);
+                ];
+
+                // Add gas parameters if available
+                if ($gasPrices) {
+                    $requestData["gasPrice"] = $gasPrices['gasPrice'];
+                    $requestData["gasLimit"] = $gasPrices['gasLimit'];
+                    $requestData["maxFeePerGas"] = $gasPrices['maxFeePerGas'];
+                    $requestData["maxPriorityFeePerGas"] = $gasPrices['maxPriorityFeePerGas'];
+                }
+
+                return $http->post("https://styx.pibin.workers.dev/api/tatum/v3/blockchain/token/transaction", $requestData);
             },
         ];
 
         return $endpoints[$tokenName]();
     }
 
+    private function getEthereumGasPrices()
+    {
+        // Try multiple gas price sources for better accuracy
+        $gasPrices = $this->tryMultipleGasPriceSources();
+
+        if ($gasPrices) {
+            return $gasPrices;
+        }
+
+        // Aggressive fallback values if all sources fail
+        return [
+            'gasPrice' => '100000000000', // 100 Gwei in Wei - very aggressive
+            'gasLimit' => '200000', // Higher gas limit
+            'maxFeePerGas' => '150000000000', // 150 Gwei in Wei
+            'maxPriorityFeePerGas' => '20000000000', // 20 Gwei in Wei
+        ];
+    }
+
+    private function tryMultipleGasPriceSources()
+    {
+        // Source 1: Original Tatum API
+        $gasPrices1 = $this->getGasPricesFromTatum();
+        if ($gasPrices1) {
+            return $gasPrices1;
+        }
+
+        // Source 2: Alternative gas price API
+        $gasPrices2 = $this->getGasPricesFromAlternative();
+        if ($gasPrices2) {
+            return $gasPrices2;
+        }
+
+        return null;
+    }
+
+    private function getGasPricesFromTatum()
+    {
+        try {
+            $response = Http::timeout(15)
+                ->retry(3, 500)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'User-Agent' => 'Laravel-App'
+                ])
+                ->get("https://sns_erp.pibin.workers.dev/api/tatum/fees");
+
+            if ($response->successful()) {
+                $gasPrice = $response->json();
+
+                if (isset($gasPrice['ETH'])) {
+                    $ethData = $gasPrice['ETH'];
+
+                    // Try to get the highest available gas price tier
+                    $selectedTier = null;
+                    $tierPriority = ['instant', 'fast', 'standard', 'slow'];
+
+                    foreach ($tierPriority as $tier) {
+                        if (isset($ethData[$tier])) {
+                            $selectedTier = $ethData[$tier];
+                            break;
+                        }
+                    }
+
+                    if ($selectedTier) {
+                        // Convert Gwei to Wei (multiply by 10^9)
+                        $gasPriceGwei = $selectedTier['native'] ?? 50;
+                        $gasPriceWei = $gasPriceGwei * 1000000000;
+
+                        // Use very aggressive pricing to ensure transaction success
+                        $maxFeePerGasWei = $gasPriceWei * 3.0; // 300% of base price
+                        $maxPriorityFeePerGasWei = $gasPriceWei * 0.8; // 80% of base price
+
+                        Log::info("Ethereum gas pricing from Tatum", [
+                            'tier_used' => array_search($selectedTier, $ethData),
+                            'gas_price_gwei' => $gasPriceGwei,
+                            'max_fee_per_gas_gwei' => $maxFeePerGasWei / 1000000000,
+                            'max_priority_fee_gwei' => $maxPriorityFeePerGasWei / 1000000000
+                        ]);
+
+                        return [
+                            'gasPrice' => (string) $gasPriceWei,
+                            'gasLimit' => '200000', // Higher gas limit for safety
+                            'maxFeePerGas' => (string) $maxFeePerGasWei,
+                            'maxPriorityFeePerGas' => (string) $maxPriorityFeePerGasWei,
+                        ];
+                    }
+                }
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::error("Failed to fetch Ethereum gas prices from Tatum: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function getGasPricesFromAlternative()
+    {
+        try {
+            // Try a different gas price API for comparison
+            $response = Http::timeout(10)
+                ->retry(2, 500)
+                ->get("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=YourApiKeyToken");
+
+            if ($response->successful()) {
+                $data = $response->json();
+
+                if (isset($data['result']) && $data['status'] === '1') {
+                    $result = $data['result'];
+
+                    // Use the highest available gas price
+                    $gasPriceGwei = max(
+                        (int) ($result['FastGasPrice'] ?? 50),
+                        (int) ($result['ProposeGasPrice'] ?? 40),
+                        (int) ($result['SafeGasPrice'] ?? 30)
+                    );
+
+                    $gasPriceWei = $gasPriceGwei * 1000000000;
+                    $maxFeePerGasWei = $gasPriceWei * 3.5; // 350% of base price
+                    $maxPriorityFeePerGasWei = $gasPriceWei * 1.0; // 100% of base price
+
+                    Log::info("Ethereum gas pricing from Etherscan", [
+                        'gas_price_gwei' => $gasPriceGwei,
+                        'max_fee_per_gas_gwei' => $maxFeePerGasWei / 1000000000,
+                        'max_priority_fee_gwei' => $maxPriorityFeePerGasWei / 1000000000
+                    ]);
+
+                    return [
+                        'gasPrice' => (string) $gasPriceWei,
+                        'gasLimit' => '200000',
+                        'maxFeePerGas' => (string) $maxFeePerGasWei,
+                        'maxPriorityFeePerGas' => (string) $maxPriorityFeePerGasWei,
+                    ];
+                }
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::error("Failed to fetch Ethereum gas prices from Etherscan: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function getEthereumBalance($address)
+    {
+        try {
+            $response = Http::timeout(10)
+                ->retry(3, 200)
+                ->get("https://styx.pibin.workers.dev/api/tatum/v3/ethereum/account/balance/{$address}");
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return (float) ($data['balance'] ?? 0);
+            }
+
+            return 0;
+        } catch (\Throwable $e) {
+            Log::error("Failed to fetch Ethereum balance for address {$address}: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    private function isValidXrpAddress($address)
+    {
+        // XRP addresses start with 'r' and are 25-34 characters long
+        // They use base58 encoding
+        if (empty($address) || strlen($address) < 25 || strlen($address) > 34) {
+            return false;
+        }
+
+        // Must start with 'r'
+        if (substr($address, 0, 1) !== 'r') {
+            return false;
+        }
+
+        // Check for valid base58 characters
+        $validChars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+        for ($i = 0; $i < strlen($address); $i++) {
+            if (strpos($validChars, $address[$i]) === false) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
 
     // New Send Token Section :: End
-
     // public function send_token(Request $request, BalanceService $balanceService)
     // {
     //     $token = $request->token;

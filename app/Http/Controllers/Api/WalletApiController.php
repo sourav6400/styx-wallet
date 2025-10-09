@@ -289,7 +289,7 @@ class WalletApiController extends Controller
         try {
             $symbol = $symbol ?: 'btc';
             $this->walletInfoUpdate($symbol);
-
+            
             $tokens = $balanceService->getFilteredTokens();
             $transfers = $this->getTransactions($symbol);
 

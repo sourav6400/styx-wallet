@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Wallet;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -150,32 +149,26 @@ class BalanceService
         }
         
         
-        // Fetch USD prices with cache
-        $cacheKey = 'token_prices_' . md5(implode(',', $allowedSymbols));
+        // Fetch USD prices
+        try {
+            $response = Http::timeout(10)
+                ->retry(3, 200)
+                ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . implode('%2C', $allowedSymbols));
+                // ->get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,litecoin,tron,xrp,dogecoin,tron,bsc&vs_currencies=usd');
         
-        $usdValues = Cache::remember($cacheKey, 600, function () use ($allowedSymbols) {
-            try {
-                $response = Http::timeout(10)
-                    ->retry(3, 200)
-                    ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . implode('%2C', $allowedSymbols));
-            
-                if ($response->successful()) {
-                    $data = $response->json();
-                    return $data['data'] ?? [];
+            if ($response->successful()) {
+                $data      = $response->json();
+                $usdValues = $data['data'] ?? [];
+        
+                foreach ($usdValues as $value) {
+                    $symbol = $value['symbol'] ?? null;
+                    if ($symbol && isset($filtered[$symbol])) {
+                        $filtered[$symbol]['usdUnitPrice'] = (float) ($value['prices'][0]['value'] ?? 0);
+                    }
                 }
-            } catch (\Throwable $e) {
-                Log::error("Price API failed: " . $e->getMessage());
             }
-            
-            return [];
-        });
-        
-        // Apply cached prices to filtered tokens
-        foreach ($usdValues as $value) {
-            $symbol = $value['symbol'] ?? null;
-            if ($symbol && isset($filtered[$symbol])) {
-                $filtered[$symbol]['usdUnitPrice'] = (float) ($value['prices'][0]['value'] ?? 0);
-            }
+        } catch (\Throwable $e) {
+            Log::error("Price API failed: " . $e->getMessage());
         }
         
         // Always return safe values
