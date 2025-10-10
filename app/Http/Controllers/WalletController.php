@@ -525,6 +525,18 @@ class WalletController extends Controller
                 if (isset($gasPrice[$token]) && isset($gasPrice[$token]['slow'])) {
                     $gasPriceGwei = $gasPrice[$token]['slow']['native'] ?? 0;
                     $gasPriceUsd = $gasPrice[$token]['slow']['usd'] ?? 0;
+                    if($gasPriceUsd == 0.0){
+                        $response = Http::timeout(10)
+                        ->retry(3, 200)
+                        ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols='.$token);
+
+                        if ($response->successful()) {
+                            $data = $response->json();
+                            $usdUnitPrice = $data['data'][0]['prices'][0]['value'] ?? 0;
+                            $gasPriceUsd = $gasPriceGwei * $usdUnitPrice;
+                            $gasPriceUsd = sprintf('%.20f', $gasPriceUsd);
+                        }
+                    }
                 } else {
                     Log::warning("Token {$token} not found in API response", [
                         'available_tokens' => array_keys($gasPrice ?? [])
