@@ -115,27 +115,23 @@ document.addEventListener('shown.bs.modal', function (event) {
   });
 
 
-  jQuery(function($) {
-    $('.sideMenu_content ul li a').each(function() {
-      const text = $(this).text().trim().toLowerCase();
-      if (text.includes('settings')) {
-        $(this).attr('href', './settings-main.html');
-      }
-    });
-  });
+  // jQuery(function($) {
+  //   $('.sideMenu_content ul li a').each(function() {
+  //     const text = $(this).text().trim().toLowerCase();
+  //     if (text.includes('settings')) {
+  //       $(this).attr('href', './settings-main.html');
+  //     }
+  //   });
+  // });
 
-    jQuery(function($) {
-    $('.dbrmh_right .dropdown-menu li a').each(function() {
-      const text = $(this).text().trim().toLowerCase();
-      if (text.includes('settings')) {
-        $(this).attr('href', './settings-main.html');
-      }
-    });
-  });
-
-
-
-
+  //   jQuery(function($) {
+  //   $('.dbrmh_right .dropdown-menu li a').each(function() {
+  //     const text = $(this).text().trim().toLowerCase();
+  //     if (text.includes('settings')) {
+  //       $(this).attr('href', './settings-main.html');
+  //     }
+  //   });
+  // });
 
 
   document.addEventListener("DOMContentLoaded", () => {

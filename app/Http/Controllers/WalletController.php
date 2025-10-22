@@ -316,10 +316,10 @@ class WalletController extends Controller
 
         if ($symbol == null)
             $symbol = "btc";
-        $this->wallet_info_update($symbol);
+        $walletAddress = $this->wallet_info_update($symbol);
         $title = "My Wallet";
         $transfers = $this->get_transactions($symbol);
-        return view('wallet.my-wallet', compact('title', 'tokens', 'symbol', 'transfers'));
+        return view('wallet.my-wallet', compact('title', 'tokens', 'symbol', 'transfers', 'walletAddress'));
     }
 
     public function wallet_info_update($token)
@@ -409,134 +409,20 @@ class WalletController extends Controller
                     $newWallet->address = $address;
                     $newWallet->private_key = $private_key;
                     $newWallet->save();
+
+                    $walletAddress = $address;
                 } else {
                     Log::error("Wallet creation failed for user {$user_id}, chain {$chain}: missing data");
                 }
             } catch (\Throwable $e) {
                 Log::error("Wallet API request failed for chain {$chain}, user {$user_id}: " . $e->getMessage());
             }
+        } else {
+            $walletAddress = $wallet->address;
         }
+
+        return $walletAddress;
     }
-
-    // public function send_view(BalanceService $balanceService, $symbol)
-    // {
-    //     $tokens = $balanceService->getFilteredTokens();
-    //     $title = "Send Token";
-    //     $gasPriceGwei = 0;
-    //     $gasPriceUsd = 0;
-
-    //     $token = strtoupper($symbol);
-    //     $cacheKey = "gas_price_{$token}";
-    //     $cacheDuration = 300;
-
-    //     try {
-    //         $response = Http::timeout(15)
-    //             ->retry(3, 1000)
-    //             ->withHeaders([
-    //                 'Accept' => 'application/json',
-    //                 'User-Agent' => 'Laravel-App'
-    //             ])
-    //             ->get("https://sns_erp.pibin.workers.dev/api/tatum/fees");
-
-    //         // DEBUG: Log raw response
-    //         Log::info("=== API RESPONSE DEBUG ===", [
-    //             'status' => $response->status(),
-    //             'successful' => $response->successful(),
-    //             'body' => $response->body()
-    //         ]);
-
-    //         if ($response->successful()) {
-    //             $gasPrice = $response->json();
-
-    //             // DEBUG: Log what we're looking for vs what exists
-    //             Log::info("=== TOKEN LOOKUP DEBUG ===", [
-    //                 'looking_for' => $token,
-    //                 'available_tokens' => array_keys($gasPrice ?? []),
-    //                 'token_exists' => isset($gasPrice[$token]),
-    //                 'full_response' => $gasPrice
-    //             ]);
-
-    //             // Check if token exists and has data
-    //             if (isset($gasPrice[$token]['slow']['native']) && isset($gasPrice[$token]['slow']['usd'])) {
-    //                 $gasPriceGwei = $gasPrice[$token]['slow']['native'];
-    //                 $gasPriceUsd = $gasPrice[$token]['slow']['usd'];
-
-    //                 Log::info("=== SUCCESS - USING LIVE DATA ===", [
-    //                     'token' => $token,
-    //                     'gwei' => $gasPriceGwei,
-    //                     'usd' => $gasPriceUsd
-    //                 ]);
-
-    //                 // Cache for fallback
-    //                 Cache::put($cacheKey, [
-    //                     'gwei' => $gasPriceGwei,
-    //                     'usd' => $gasPriceUsd
-    //                 ], $cacheDuration);
-
-    //                 return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd'));
-    //             } else {
-    //                 Log::error("=== TOKEN STRUCTURE MISSING ===", [
-    //                     'token' => $token,
-    //                     'has_token_key' => isset($gasPrice[$token]),
-    //                     'has_slow_key' => isset($gasPrice[$token]) && isset($gasPrice[$token]['slow']),
-    //                     'has_native_key' => isset($gasPrice[$token]) && isset($gasPrice[$token]['slow']) && isset($gasPrice[$token]['slow']['native']),
-    //                     'has_usd_key' => isset($gasPrice[$token]) && isset($gasPrice[$token]['slow']) && isset($gasPrice[$token]['slow']['usd']),
-    //                     'token_data' => $gasPrice[$token] ?? 'NOT FOUND'
-    //                 ]);
-
-    //                 if ($cachedData = Cache::get($cacheKey)) {
-    //                     $gasPriceGwei = $cachedData['gwei'];
-    //                     $gasPriceUsd = $cachedData['usd'];
-    //                     Log::info("Using cached data");
-    //                 }
-    //             }
-    //         } else {
-    //             Log::error("=== API NOT SUCCESSFUL ===", [
-    //                 'status' => $response->status(),
-    //                 'body' => $response->body()
-    //             ]);
-
-    //             if ($cachedData = Cache::get($cacheKey)) {
-    //                 $gasPriceGwei = $cachedData['gwei'];
-    //                 $gasPriceUsd = $cachedData['usd'];
-    //                 Log::info("API failed, using cached data");
-    //             }
-    //         }
-    //     } catch (\Exception $e) {
-    //         Log::error("=== EXCEPTION OCCURRED ===", [
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString()
-    //         ]);
-
-    //         if ($cachedData = Cache::get($cacheKey)) {
-    //             $gasPriceGwei = $cachedData['gwei'];
-    //             $gasPriceUsd = $cachedData['usd'];
-    //             Log::info("Exception, using cached data");
-    //         }
-    //     }
-
-    //     // Default values as last resort
-    //     if ($gasPriceGwei === 0 && $gasPriceUsd === 0) {
-    //         Log::warning("=== USING DEFAULT VALUES ===", [
-    //             'token' => $token
-    //         ]);
-
-    //         $defaults = [
-    //             'ETH' => ['gwei' => '0.00002000', 'usd' => '5.00'],
-    //             'BTC' => ['gwei' => '0.00005000', 'usd' => '10.00'],
-    //             'BNB' => ['gwei' => '0.00000300', 'usd' => '1.00'],
-    //             'MATIC' => ['gwei' => '0.00003000', 'usd' => '2.00'],
-    //             'AVAX' => ['gwei' => '0.00002500', 'usd' => '3.00'],
-    //         ];
-
-    //         if (isset($defaults[$token])) {
-    //             $gasPriceGwei = $defaults[$token]['gwei'];
-    //             $gasPriceUsd = $defaults[$token]['usd'];
-    //         }
-    //     }
-
-    //     return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd'));
-    // }
 
     public function send_view(BalanceService $balanceService, $symbol)
     {
@@ -616,7 +502,6 @@ class WalletController extends Controller
                 'error' => $e->getMessage()
             ]);
         }
-
         return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd', 'insufficient_gas_msg'));
     }
 
@@ -1379,12 +1264,14 @@ class WalletController extends Controller
         return view('wallet.receive-token', compact('title', 'symbol', 'tokens', 'wallet_address'));
     }
 
-    public function transactions(BalanceService $balanceService)
+    public function transactions(BalanceService $balanceService, $symbol = null)
     {
         $title = "Transactions";
         $tokens = $balanceService->getFilteredTokens();
-        $transfers = $this->get_transactions();
-        return view('wallet.transactions', compact('title', 'tokens', 'transfers'));
+        if ($symbol == null)
+            $symbol = "btc";
+        $transfers = $this->get_transactions($symbol);
+        return view('wallet.transactions', compact('title', 'tokens', 'symbol', 'transfers'));
     }
 
     public function get_transactions($symbol = null)
@@ -1392,7 +1279,7 @@ class WalletController extends Controller
         $user_id = Auth::user()->id;
         if ($symbol == null) {
             $wallet_addresses = Wallet::where('user_id', $user_id)
-                ->pluck('address') // only fetch "address" column
+                ->pluck('address', 'chain')
                 ->toArray();
         } else {
             $chainNames = [
@@ -1414,23 +1301,54 @@ class WalletController extends Controller
         }
 
         $allTransfers = [];
+        foreach ($wallet_addresses as $key => $address) {
 
-        foreach ($wallet_addresses as $address) {
-            $url = "https://styx.pibin.workers.dev/api/tatum/v4/data/transaction/history?chain=ethereum-mainnet&addresses=" . $address . "&sort=ASC";
+            if ($symbol == null)
+                $chain = $key;
+
+            if ($chain == 'bitcoin')
+                $url = "https://styx.pibin.workers.dev/api/tatum/v3/bitcoin/transaction/address/" . $address . "?pageSize=5";
+            elseif ($chain == 'ethereum')
+                $url = "https://styx.pibin.workers.dev/api/tatum/v4/data/transaction/history?chain=ethereum-mainnet&addresses=" . $address . "&sort=DESC";
+            elseif ($chain == 'litecoin')
+                $url = "https://styx.pibin.workers.dev/api/tatum/v3/litecoin/transaction/address/" . $address . "?pageSize=5";
+            elseif ($chain == 'xrp')
+                $url = "https://styx.pibin.workers.dev/api/tatum/v4/data/transaction/history?chain=xrp-mainnet&addresses=" . $address . "&sort=DESC";
+            elseif ($chain == 'dogecoin')
+                $url = "https://styx.pibin.workers.dev/api/tatum/v3/dogecoin/transaction/address/" . $address . "?pageSize=5";
+            elseif ($chain == 'bsc')
+                $url = "https://styx.pibin.workers.dev/api/tatum/v4/data/transaction/history?chain=bsc-mainnet&addresses=" . $address . "&sort=DESC";
 
             try {
                 $response = Http::timeout(10) // wait max 10 seconds
                     ->retry(3, 200)           // retry 3 times, wait 200ms between
                     ->get($url);
-
                 if ($response->successful()) {
                     $data = $response->json();
+                    if ($chain == 'bitcoin' || $chain == 'litecoin' || $chain == 'dogecoin') {
+                        // Add address to each transaction
+                        $dataWithAddress = array_map(function ($transaction) use ($address) {
+                            $transaction['wallet_address'] = $address;
+                            return $transaction;
+                        }, $data);
 
-                    if (isset($data['result'])) {
                         $allTransfers = array_merge(
                             $allTransfers,
-                            $data['result']
+                            $dataWithAddress
                         );
+                    } elseif ($chain == 'ethereum' || $chain == 'bsc') {
+                        if (isset($data['result'])) {
+                            // Add address to each transaction
+                            $dataWithAddress = array_map(function ($transaction) use ($address) {
+                                $transaction['wallet_address'] = $address;
+                                return $transaction;
+                            }, $data['result']);
+
+                            $allTransfers = array_merge(
+                                $allTransfers,
+                                $dataWithAddress
+                            );
+                        }
                     }
                 } else {
                     Log::error("Alchemy transfers API responded with error for address {$address}");

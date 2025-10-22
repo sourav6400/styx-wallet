@@ -219,19 +219,10 @@
                                         <i class="fa-solid fa-wallet"></i> My wallet</a>
                                 </li>
                                 <li><a href="#"><i class="fa-regular fa-shuffle"></i> Swap</a></li>
-                                <li>
-                                    <a href="{{ route('transactions', ['symbol' => 'btc']) }}"
-                                        class="{{ request()->routeIs('transactions') ? 'active' : '' }}">
-                                        <i class="fa-solid fa-file-invoice"></i>
-                                        Transactions
-                                    </a>
-                                </li>
-                                <li><a href="{{ route('message.announcements') }}"
-                                        class="{{ request()->routeIs('message.announcements') ? 'active' : '' }}"><i
-                                            class="fa-solid fa-bullhorn"></i> Announcement</a></li>
-                                <li><a href="{{ route('message.alerts') }}"
-                                        class="{{ request()->routeIs('message.alerts') ? 'active' : '' }}"><i
-                                            class="fa-solid fa-triangle-exclamation"></i> Alert</a></li>
+                                <li><a href="{{ route('transactions', ['symbol' => 'btc']) }}"
+                                        class="{{ request()->routeIs('transactions') ? 'active' : '' }}"><i
+                                            class="fa-solid fa-file-invoice"></i>
+                                        Transactions</a></li>
                                 <li><a href="{{ route('settings.backup_seed') }}"
                                         class="{{ request()->routeIs('settings.*') ? 'active' : '' }}"><i
                                             class="fa-solid fa-gear"></i> Settings</a></li>
@@ -279,7 +270,7 @@
                                 <div class="col-md-5 col-2">
                                     <div class="dbrmh_right">
                                         <ul>
-                                            <!--<li><i class="fa-regular fa-bell"></i></li>-->
+                                            <li><i class="fa-regular fa-bell"></i></li>
                                             <li class="d-none d-lg-flex">
                                                 <div class="dropdown">
                                                     <button class="dbrmhr_user" type="button" id="dropdownMenuButton1"
@@ -359,8 +350,7 @@
                             Dashboard</a></li>
                     <li><a href="{{ route('wallet.landing') }}"><i class="fa-solid fa-wallet"></i> My wallet</a></li>
                     <li><a href="#"><i class="fa-regular fa-shuffle"></i> Swap</a></li>
-                    <li><a href="{{ route('transactions', ['symbol' => 'btc']) }}"><i
-                                class="fa-solid fa-file-invoice"></i>
+                    <li><a href="{{ route('transactions', ['symbol' => 'btc']) }}"><i class="fa-solid fa-file-invoice"></i>
                             Transactions</a></li>
                     <li><a href="{{ route('settings.backup_seed') }}"><i class="fa-solid fa-gear"></i> Settings</a>
                     </li>
@@ -430,7 +420,7 @@
     <script>
         window.addEventListener("load", function() {
             document.getElementById("loader").style.display = "none";
-            document.getElementById("content").style.display = "block";
+            // document.getElementById("content").style.display = "block";
         });
 
         $(document).ready(function() {
