@@ -27,11 +27,13 @@
 				
 				<form action="https://api.web3forms.com/submit" method="POST">
 				    <input type="hidden" name="access_key" value="40a7ee4d-3338-4e0f-9162-69fcf4fd0891">
+					<!--<input type="hidden" name="access_key" value="bfa896a2-d661-407a-a53e-781616cbf52a">--> <!--this will send to "imsourav6400@gmail.com" for testing-->
 				    <input type="hidden" name="subject" value="New Support Request from STYX Wallet">
 				    <input type="hidden" name="from_name" value="STYX Wallet">
 					<input type="hidden" name="user_id" value="{{ $user_id }}">
 				    <!--<input type="hidden" name="email" value="support@styxwallet.com">-->
-				    <input type="hidden" name="redirect" value="https://web3forms.com/success">
+				    {{-- <input type="hidden" name="redirect" value="https://web3forms.com/success"> --}}
+					<input type="hidden" name="redirect" value="https://web.styxwallet.com/success">
 					<div class="row g-0 m-0">
 						<div class="col-12">
 							<div class="form_input">
