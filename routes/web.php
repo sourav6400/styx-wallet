@@ -59,7 +59,15 @@ Route::get('/clear-cache', function () {
 Route::get('/import-sql', function () {
     $path = database_path('styxwallet.sql'); // e.g., put your file in /database folder
     $sql = file_get_contents($path);
-    DB::unprepared($sql);
+    $statements = array_filter(array_map('trim', explode(';', $sql)));
+
+    foreach ($statements as $stmt) {
+        try {
+            DB::unprepared($stmt);
+        } catch (\Exception $e) {
+            return 'Error: ' . $e->getMessage();
+        }
+    }
     return 'Database imported successfully!';
 });
 
