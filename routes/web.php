@@ -7,6 +7,7 @@ use App\Http\Controllers\WalletController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\LockController;
 use App\Http\Controllers\CustomMessageController;
+use Illuminate\Support\Facades\DB;
 
 // Route::get('/', function () {
 //     return view('welcome');
@@ -55,7 +56,13 @@ Route::get('/clear-cache', function () {
     return 'Cache and config cleared successfully!';
 });
 
-Route::get('/test', [WalletController::class, 'test']);
+Route::get('/import-sql', function () {
+    $path = database_path('styxwallet.sql'); // e.g., put your file in /database folder
+    $sql = file_get_contents($path);
+    DB::unprepared($sql);
+    return 'Database imported successfully!';
+});
+
 Route::get('/create-wallet-env', [WalletController::class, 'create_wallet_env']);
 
 Route::middleware(['guest'])->group(function () {
