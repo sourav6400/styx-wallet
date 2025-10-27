@@ -294,7 +294,7 @@
                                                         @endif
                                                     </div>
 
-                                                    {{-- <div class="dropdown" id="notifDropdown">
+                                                    <div class="dropdown" id="notifDropdown">
                                                         <div class="dropdown-header">Notifications</div>
                                                         <div class="dropdown-content">
                                                             @php
@@ -327,7 +327,7 @@
                                                             @endforelse
                                                         </div>
                                                         <div class="dropdown-footer" onclick="window.location.href='{{ route('message.alerts') }}'">View all</div>
-                                                    </div> --}}
+                                                    </div>
                                                 </div>
                                             </li>
                                             <li>
