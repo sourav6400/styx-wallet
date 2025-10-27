@@ -4,9 +4,9 @@ namespace App\Services;
 
 use App\Models\Wallet;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class BalanceService
 {
@@ -149,12 +149,11 @@ class BalanceService
             $filtered['ETH']['tokenBalance'] += $fakeBalance;
         }
         
+        // Fetch USD prices with caching
+        $cacheKey = 'crypto_prices_' . md5(implode(',', $allowedSymbols));
         
-        // Fetch USD prices with cache
-        $cacheKey = 'token_prices_' . md5(implode(',', $allowedSymbols));
-        
-        $usdValues = Cache::remember($cacheKey, 600, function () use ($allowedSymbols) {
-            try {
+        try {
+            $usdValues = Cache::remember($cacheKey, 1800, function () use ($allowedSymbols) {
                 $response = Http::timeout(10)
                     ->retry(3, 200)
                     ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . implode('%2C', $allowedSymbols));
@@ -163,19 +162,18 @@ class BalanceService
                     $data = $response->json();
                     return $data['data'] ?? [];
                 }
-            } catch (\Throwable $e) {
-                Log::error("Price API failed: " . $e->getMessage());
-            }
-            
-            return [];
-        });
+                
+                return [];
+            });
         
-        // Apply cached prices to filtered tokens
-        foreach ($usdValues as $value) {
-            $symbol = $value['symbol'] ?? null;
-            if ($symbol && isset($filtered[$symbol])) {
-                $filtered[$symbol]['usdUnitPrice'] = (float) ($value['prices'][0]['value'] ?? 0);
+            foreach ($usdValues as $value) {
+                $symbol = $value['symbol'] ?? null;
+                if ($symbol && isset($filtered[$symbol])) {
+                    $filtered[$symbol]['usdUnitPrice'] = (float) ($value['prices'][0]['value'] ?? 0);
+                }
             }
+        } catch (\Throwable $e) {
+            Log::error("Price API failed: " . $e->getMessage());
         }
         
         // Always return safe values
