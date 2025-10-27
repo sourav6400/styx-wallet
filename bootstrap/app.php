@@ -12,6 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->trustProxies(at: '*');
+        $middleware->use([
+            \App\Http\Middleware\TrustProxies::class,
+        ]);
         $middleware->alias([
             'never.logout'      => \App\Http\Middleware\NeverLogout::class,
             'pin.lock'          => \App\Http\Middleware\PinLock::class,
