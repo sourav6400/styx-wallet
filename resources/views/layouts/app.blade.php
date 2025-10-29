@@ -226,9 +226,9 @@
                                 <li><a href="{{ route('settings.backup_seed') }}"
                                         class="{{ request()->routeIs('settings.*') ? 'active' : '' }}"><i
                                             class="fa-solid fa-gear"></i> Settings</a></li>
-                                <li><a href="{{ route('message.alerts') }}"
+                                <!-- <li><a href="{{ route('message.alerts') }}"
                                         class="{{ request()->routeIs('message.alerts') ? 'active' : '' }}"><i
-                                            class="fa-solid fa-triangle-exclamation"></i> Alerts</a></li>
+                                            class="fa-solid fa-triangle-exclamation"></i> Alerts</a></li> -->
                                 <!-- <li><a href="{{ route('message.announcements') }}"
                                         class="{{ request()->routeIs('message.announcements') ? 'active' : '' }}"><i
                                             class="fa-solid fa-bullhorn"></i> Announcements</a></li> -->
@@ -322,6 +322,62 @@
                                                                     <div class="text">
                                                                         <div class="title">No new notifications</div>
                                                                         <div class="time">All caught up!</div>
+                                                                    </div>
+                                                                </div>
+                                                            @endforelse
+                                                        </div>
+                                                        <div class="dropdown-footer" onclick="window.location.href='{{ route('message.alerts') }}'">View all</div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li>
+                                                <div class="notification-container">
+                                                    <div class="notification-icon" id="alertBtn">
+                                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                                        @php
+                                                            $alertCount = \App\Models\CustomMessage::where('message_type', 'alert')
+                                                                ->active()
+                                                                ->current()
+                                                                ->where(function ($query) {
+                                                                    $query->where('is_global', true)
+                                                                          ->orWhere('user_id', Auth::user()->id);
+                                                                })
+                                                                ->count();
+                                                        @endphp
+                                                        @if($alertCount > 0)
+                                                            <span class="notification-badge">{{ $alertCount }}</span>
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="dropdown" id="alertDropdown">
+                                                        <div class="dropdown-header">Alerts</div>
+                                                        <div class="dropdown-content">
+                                                            @php
+                                                                $alerts = \App\Models\CustomMessage::where('message_type', 'alert')
+                                                                    ->active()
+                                                                    ->current()
+                                                                    ->where(function ($query) {
+                                                                        $query->where('is_global', true)
+                                                                              ->orWhere('user_id', Auth::user()->id);
+                                                                    })
+                                                                    ->orderBy('created_at', 'desc')
+                                                                    ->take(4)
+                                                                    ->get();
+                                                            @endphp
+
+                                                            @forelse($alerts as $alert)
+                                                                <div class="notification-item">
+                                                                    <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                                                                    <div class="text">
+                                                                        <div class="title">{{ $alert->message }}</div>
+                                                                        <div class="time">{{ $alert->created_at->diffForHumans() }}</div>
+                                                                    </div>
+                                                                </div>
+                                                            @empty
+                                                                <div class="notification-item">
+                                                                    <div class="text">
+                                                                        <div class="title">No new alerts</div>
+                                                                        <div class="time">All clear!</div>
                                                                     </div>
                                                                 </div>
                                                             @endforelse

@@ -1,14 +1,36 @@
 
   const notifBtn = document.getElementById('notifBtn');
   const notifDropdown = document.getElementById('notifDropdown');
+  const alertBtn = document.getElementById('alertBtn');
+  const alertDropdown = document.getElementById('alertDropdown');
 
-  notifBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    notifDropdown.classList.toggle('active');
-  });
+  if (notifBtn && notifDropdown) {
+    notifBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notifDropdown.classList.toggle('active');
+      if (alertDropdown) {
+        alertDropdown.classList.remove('active');
+      }
+    });
+  }
+
+  if (alertBtn && alertDropdown) {
+    alertBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      alertDropdown.classList.toggle('active');
+      if (notifDropdown) {
+        notifDropdown.classList.remove('active');
+      }
+    });
+  }
 
   document.addEventListener('click', () => {
-    notifDropdown.classList.remove('active');
+    if (notifDropdown) {
+      notifDropdown.classList.remove('active');
+    }
+    if (alertDropdown) {
+      alertDropdown.classList.remove('active');
+    }
   });
   
 
