@@ -310,7 +310,11 @@
                                                             @endphp
 
                                                             @forelse($notifications as $notification)
-                                                                <div class="notification-item">
+                                                                <div class="notification-item" 
+                                                                     data-message="{{ $notification->message }}"
+                                                                     data-time="{{ $notification->created_at->format('M d, Y h:i A') }}"
+                                                                     data-type="notification"
+                                                                     data-icon="fa-bell">
                                                                     <div class="icon"><i class="fa-solid fa-bell"></i></div>
                                                                     <div class="text">
                                                                         <div class="title">{{ $notification->message }}</div>
@@ -326,7 +330,7 @@
                                                                 </div>
                                                             @endforelse
                                                         </div>
-                                                        <div class="dropdown-footer" onclick="window.location.href='{{ route('message.alerts') }}'">View all</div>
+                                                        <!-- <div class="dropdown-footer" onclick="window.location.href='{{ route('message.alerts') }}'">View all</div> -->
                                                     </div>
                                                 </div>
                                             </li>
@@ -366,7 +370,11 @@
                                                             @endphp
 
                                                             @forelse($alerts as $alert)
-                                                                <div class="notification-item">
+                                                                <div class="notification-item" 
+                                                                     data-message="{{ $alert->message }}"
+                                                                     data-time="{{ $alert->created_at->format('M d, Y h:i A') }}"
+                                                                     data-type="alert"
+                                                                     data-icon="fa-triangle-exclamation">
                                                                     <div class="icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                                                                     <div class="text">
                                                                         <div class="title">{{ $alert->message }}</div>
@@ -382,7 +390,7 @@
                                                                 </div>
                                                             @endforelse
                                                         </div>
-                                                        <div class="dropdown-footer" onclick="window.location.href='{{ route('message.alerts') }}'">View all</div>
+                                                        <!-- <div class="dropdown-footer" onclick="window.location.href='{{ route('message.alerts') }}'">View all</div> -->
                                                     </div>
                                                 </div>
                                             </li>
@@ -660,7 +668,93 @@
             color: #ccc;
             border-color: #ccc;
         }
+
+        /* Notification/Alert Modal Styles */
+        .message-modal .modal-content {
+            background: #1C1F30;
+            border: 1px solid #2a2f44;
+            border-radius: 14px;
+            color: #fff;
+        }
+
+        .message-modal .modal-header {
+            background: #1b2033;
+            border-bottom: 1px solid #2a2f44;
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .message-modal .modal-header .modal-icon {
+            background: #1f243a;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #007FFF;
+        }
+
+        .message-modal .modal-header .modal-title-wrapper h5 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .message-modal .modal-header .modal-title-wrapper .modal-subtitle {
+            font-size: 12px;
+            color: #7c84a1;
+            margin-top: 2px;
+        }
+
+        .message-modal .modal-header .btn-close {
+            margin-left: auto;
+            filter: invert(1);
+            opacity: 0.8;
+        }
+
+        .message-modal .modal-header .btn-close:hover {
+            opacity: 1;
+        }
+
+        .message-modal .modal-body {
+            padding: 24px;
+            color: #e8ebf5;
+            line-height: 1.6;
+        }
+
+        .message-modal .modal-body .message-content {
+            font-size: 15px;
+            word-wrap: break-word;
+        }
     </style>
+
+    <!-- Notification/Alert Modal Popup -->
+    <div class="modal fade message-modal" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-icon" id="modalIcon">
+                        <i class="fa-solid fa-bell"></i>
+                    </div>
+                    <div class="modal-title-wrapper">
+                        <h5 class="modal-title" id="modalTitle">Notification</h5>
+                        <div class="modal-subtitle" id="modalSubtitle">Just now</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="message-content" id="modalMessage">
+                        <!-- Message content will be inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

@@ -32,6 +32,80 @@
       alertDropdown.classList.remove('active');
     }
   });
+
+  // Handle notification/alert item clicks
+  document.addEventListener('DOMContentLoaded', function() {
+    const messageModalElement = document.getElementById('messageModal');
+    if (!messageModalElement) return;
+    
+    let messageModal;
+    try {
+      messageModal = new bootstrap.Modal(messageModalElement);
+    } catch (e) {
+      console.error('Bootstrap Modal not available');
+      return;
+    }
+    
+    function initNotificationItemListeners() {
+      const notificationItems = document.querySelectorAll('.notification-item[data-message]');
+      
+      notificationItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+          e.stopPropagation();
+          
+          const message = this.getAttribute('data-message');
+          const time = this.getAttribute('data-time');
+          const type = this.getAttribute('data-type');
+          const iconClass = this.getAttribute('data-icon');
+          
+          if (!message) return;
+          
+          // Update modal content
+          const modalMessageEl = document.getElementById('modalMessage');
+          const modalSubtitleEl = document.getElementById('modalSubtitle');
+          const modalIconEl = document.getElementById('modalIcon');
+          const modalTitleEl = document.getElementById('modalTitle');
+          
+          if (modalMessageEl) modalMessageEl.textContent = message;
+          if (modalSubtitleEl) modalSubtitleEl.textContent = time;
+          
+          // Update icon
+          if (modalIconEl) {
+            modalIconEl.innerHTML = `<i class="fa-solid ${iconClass}"></i>`;
+            const icon = modalIconEl.querySelector('i');
+            if (icon) {
+              if (type === 'alert') {
+                icon.style.color = '#ff9800';
+              } else {
+                icon.style.color = '#007FFF';
+              }
+            }
+          }
+          
+          // Update title based on type
+          if (modalTitleEl) {
+            modalTitleEl.textContent = type === 'alert' ? 'Alert' : 'Notification';
+          }
+          
+          // Close dropdown
+          if (notifDropdown) {
+            notifDropdown.classList.remove('active');
+          }
+          if (alertDropdown) {
+            alertDropdown.classList.remove('active');
+          }
+          
+          // Show modal
+          if (messageModal) {
+            messageModal.show();
+          }
+        });
+      });
+    }
+    
+    // Initialize listeners
+    initNotificationItemListeners();
+  });
   
 
 (function($){
@@ -220,6 +294,3 @@ document.addEventListener('shown.bs.modal', function (event) {
 //     // Change button text
 //     this.innerText = 'SET DEFAULT';
 // });
-
-
-
