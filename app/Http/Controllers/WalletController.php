@@ -213,13 +213,9 @@ class WalletController extends Controller
         $user = User::where('phrase12', $phrase)->first();
 
         if ($user) {
-            // Auth::login($user, true);
-            // return redirect()->route('reset.wallet-pin');
             return redirect()->route('reset.wallet-pin')
                 ->with('phrase', $phrase)
                 ->with('success', 'Data submitted successfully!');
-            // $title = "Wallet PIN Reset";
-            // return view('wallet.wallet-pin-reset', compact('title', 'phrase'));
         } else {
             return back()->withErrors([
                 'not_found' => 'Your Wallet phrase is incorrect.',
@@ -321,7 +317,7 @@ class WalletController extends Controller
 
         if (!$chain) {
             // Log::error("Unknown token symbol: {$token}");
-            return null; // or handle as needed
+            return null;
         }
 
         $wallet = Wallet::where('user_id', $user_id)
@@ -422,13 +418,15 @@ class WalletController extends Controller
             }
         }
 
-        if ($symbol == 'bnb' || $symbol == 'trx' || $symbol == 'doge') {
+        if ($symbol == 'bnb' || $symbol == 'trx' || $symbol == 'doge' || $symbol == 'xrp') {
             if ($symbol == 'bnb')
                 $gasPriceGwei = 0.00001;
             elseif ($symbol == 'trx')
                 $gasPriceGwei = 1.00;
             elseif ($symbol == 'doge')
                 $gasPriceGwei = 1.58;
+            elseif ($symbol == 'xrp')
+                $gasPriceGwei = 0.000015;
 
             // $response = Http::timeout(10)
             //     ->retry(3, 200)
@@ -436,15 +434,13 @@ class WalletController extends Controller
 
             $response = Http::timeout(10)
                 ->retry(3, 200)
-                ->get('https://styx.pibin.workers.dev/api/tatum/v4/data/rate/symbol?symbol='.strtoupper($symbol).'&basePair=USD');
-
+                ->get('https://styx.pibin.workers.dev/api/tatum/v4/data/rate/symbol?symbol=' . strtoupper($symbol) . '&basePair=USD');
 
             if ($response->successful()) {
                 $data = $response->json();
                 // $usdUnitPrice = $data['data'][0]['prices'][0]['value'] ?? 0;
                 $usdUnitPrice = $data['value'] ?? 0;
                 $gasPriceUsd = $gasPriceGwei * $usdUnitPrice;
-                $gasPriceUsd = sprintf('%.20f', $gasPriceUsd);
             }
         } else {
             try {
@@ -480,7 +476,6 @@ class WalletController extends Controller
                                 // $usdUnitPrice = $data['data'][0]['prices'][0]['value'] ?? 0;
                                 $usdUnitPrice = $data['value'] ?? 0;
                                 $gasPriceUsd = $gasPriceGwei * $usdUnitPrice;
-                                $gasPriceUsd = sprintf('%.20f', $gasPriceUsd);
                             }
                         }
                     } else {
@@ -516,15 +511,27 @@ class WalletController extends Controller
             }
         }
 
-        $gasPriceGwei = $gasPriceGwei * 2;
-        $gasPriceUsd = $gasPriceUsd * 2;
+        $gasPriceGwei = $gasPriceGwei * 1.5;
+        // $gasPriceGwei = sprintf('%.20f', $gasPriceGwei);
+        $gasPriceUsd = $gasPriceUsd * 1.5;
+        // $gasPriceUsd = sprintf('%.20f', $gasPriceUsd);
 
-        return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd', 'insufficient_gas_msg'));
+        $user_id = Auth::user()->id;
+        if (strtoupper($symbol) == 'ETH') {
+            $wallet = Wallet::where('user_id', $user_id)
+                ->where('chain', 'ethereum')
+                ->first();
+            $active_transaction_type = $wallet->active_transaction_type;
+        }
+
+        else{
+            $active_transaction_type = 'real';
+        }
+
+        return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd', 'insufficient_gas_msg', 'active_transaction_type'));
     }
 
     // New Send Token Section :: Start
-
-
     public function send_token(Request $request, BalanceService $balanceService)
     {
         $token = $request->token;
@@ -629,7 +636,7 @@ class WalletController extends Controller
 
             // Validate XRP balance (must maintain 10 XRP reserve minimum)
             $xrpBalance = (float) $realBalanceBeforeSending;
-            $minReserve = 10.0;
+            $minReserve = 0.000015;
             $availableToSend = $xrpBalance - $minReserve;
 
             if ($xrpAmount > $availableToSend) {
@@ -670,7 +677,7 @@ class WalletController extends Controller
             'receiverAddress' => $receiverAddress,
             'active_transaction_type' => $active_transaction_type,
             'contractAddress' => $contractAddress,
-            'amount' => $amount,
+            'amount' => sprintf("%.10f", $amount),
             'destinationTag' => $destinationTag
         ]);
 
@@ -693,16 +700,16 @@ class WalletController extends Controller
             if ($decodedResponse && isset($decodedResponse['message'])) {
                 $message = $decodedResponse['message'];
                 $details = $decodedResponse['cause'] ?? '';
-                
+
                 // Handle specific UTXO balance error with better message
                 if (stripos($message, 'unspent value') !== false || stripos($message, 'insufficient') !== false) {
                     $fee = $this->getTransactionFee($tokenName);
                     $totalRequired = (float) $amount + $fee;
                     $availableBalance = (float) $realBalanceBeforeSending;
                     $maxSendable = $availableBalance - $fee;
-                    
+
                     $message = "Insufficient balance for transaction. You have {$availableBalance} {$token} available. The transaction requires {$totalRequired} {$token} (amount {$amount} + fee {$fee}). Maximum you can send is {$maxSendable} {$token}.";
-                    
+
                     // Log::error("UTXO balance error in {$chain} transaction for user {$userId}: " . $responseBody);
                 }
             } else {
@@ -809,7 +816,6 @@ class WalletController extends Controller
             'Ripple' => function () use ($http, $params) {
                 // Convert XRP amount to drops (1 XRP = 1,000,000 drops)
                 // $amountInDrops = (float) $params['amount'] * 1000000;
-
                 $requestData = [
                     "fromAccount" => $params['senderAddress'],
                     "to" => $params['receiverAddress'],
