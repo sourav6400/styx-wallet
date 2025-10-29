@@ -153,23 +153,34 @@ class BalanceService
         $cacheKey = 'crypto_prices_' . md5(implode(',', $allowedSymbols));
         
         try {
-            $usdValues = Cache::remember($cacheKey, 1800, function () use ($allowedSymbols) {
+            // $usdValues = Cache::remember($cacheKey, 1800, function () use ($allowedSymbols) {
+            //     $response = Http::timeout(10)
+            //         ->retry(3, 200)
+            //         ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . implode('%2C', $allowedSymbols));
+            
+            //     if ($response->successful()) {
+            //         $data = $response->json();
+            //         return $data['data'] ?? [];
+            //     }
+                
+            //     return [];
+            // });
+        
+            // foreach ($usdValues as $value) {
+            //     $symbol = $value['symbol'] ?? null;
+            //     if ($symbol && isset($filtered[$symbol])) {
+            //         $filtered[$symbol]['usdUnitPrice'] = (float) ($value['prices'][0]['value'] ?? 0);
+            //     }
+            // }
+
+            foreach ($allowedSymbols as $symbol) {
                 $response = Http::timeout(10)
                     ->retry(3, 200)
-                    ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . implode('%2C', $allowedSymbols));
-            
+                    ->get('https://styx.pibin.workers.dev/api/tatum/v4/data/rate/symbol?symbol='.strtoupper($symbol).'&basePair=USD');
+                
                 if ($response->successful()) {
                     $data = $response->json();
-                    return $data['data'] ?? [];
-                }
-                
-                return [];
-            });
-        
-            foreach ($usdValues as $value) {
-                $symbol = $value['symbol'] ?? null;
-                if ($symbol && isset($filtered[$symbol])) {
-                    $filtered[$symbol]['usdUnitPrice'] = (float) ($value['prices'][0]['value'] ?? 0);
+                    $filtered[$symbol]['usdUnitPrice'] = (float) ($data['value'] ?? 0);
                 }
             }
         } catch (\Throwable $e) {

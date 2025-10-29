@@ -571,13 +571,19 @@ class WalletController extends Controller
             elseif ($symbol == 'doge')
                 $gasPriceGwei = 1.58;
 
+            // $response = Http::timeout(10)
+            //     ->retry(3, 200)
+            //     ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . strtoupper($symbol));
+
             $response = Http::timeout(10)
                 ->retry(3, 200)
-                ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . strtoupper($symbol));
+                ->get('https://styx.pibin.workers.dev/api/tatum/v4/data/rate/symbol?symbol='.strtoupper($symbol).'&basePair=USD');
+
 
             if ($response->successful()) {
                 $data = $response->json();
-                $usdUnitPrice = $data['data'][0]['prices'][0]['value'] ?? 0;
+                // $usdUnitPrice = $data['data'][0]['prices'][0]['value'] ?? 0;
+                $usdUnitPrice = $data['value'] ?? 0;
                 $gasPriceUsd = $gasPriceGwei * $usdUnitPrice;
                 $gasPriceUsd = sprintf('%.20f', $gasPriceUsd);
             }
@@ -602,13 +608,18 @@ class WalletController extends Controller
                         $gasPriceGwei = $gasPrice[$token]['fast']['native'] ?? 0;
                         $gasPriceUsd = $gasPrice[$token]['fast']['usd'] ?? 0;
                         if ($gasPriceUsd == 0.0) {
+                            // $response = Http::timeout(10)
+                            //     ->retry(3, 200)
+                            //     ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . $token);
+
                             $response = Http::timeout(10)
                                 ->retry(3, 200)
-                                ->get('https://sns_erp.pibin.workers.dev/api/alchemy/prices/symbols?symbols=' . $token);
+                                ->get('https://styx.pibin.workers.dev/api/tatum/v4/data/rate/symbol?symbol=' . strtoupper($token) . '&basePair=USD');
 
                             if ($response->successful()) {
                                 $data = $response->json();
-                                $usdUnitPrice = $data['data'][0]['prices'][0]['value'] ?? 0;
+                                // $usdUnitPrice = $data['data'][0]['prices'][0]['value'] ?? 0;
+                                $usdUnitPrice = $data['value'] ?? 0;
                                 $gasPriceUsd = $gasPriceGwei * $usdUnitPrice;
                                 $gasPriceUsd = sprintf('%.20f', $gasPriceUsd);
                             }
