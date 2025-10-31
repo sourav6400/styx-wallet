@@ -37,6 +37,11 @@ class PinLock
         // If already locked, redirect to lock screen
         if ($isLocked === true) {
             session(['url.intended' => $request->fullUrl()]);
+            // Force session save for file driver
+            $sessionDriver = config('session.driver');
+            if ($sessionDriver === 'file') {
+                session()->save();
+            }
             return redirect()->route('lock.show');
         }
 
@@ -49,21 +54,36 @@ class PinLock
         
         if (empty($lastActive) || !is_numeric($lastActive)) {
             // Initialize on first check - try to get from session record or use current time
-            try {
-                $sessionId = session()->getId();
-                $sessionRecord = DB::table('sessions')
-                    ->where('id', $sessionId)
-                    ->where('user_id', Auth::id())
-                    ->first();
-                
-                $lastActive = $sessionRecord ? $sessionRecord->last_activity : now()->timestamp;
-            } catch (\Exception $e) {
-                // If DB query fails, use current timestamp
-                $lastActive = now()->timestamp;
-                Log::warning('PinLock: Failed to query sessions table', ['error' => $e->getMessage()]);
+            $lastActive = now()->timestamp;
+            
+            // Try to get from database session if driver is database
+            $sessionDriver = config('session.driver');
+            if ($sessionDriver === 'database') {
+                try {
+                    $sessionId = session()->getId();
+                    $sessionRecord = DB::table('sessions')
+                        ->where('id', $sessionId)
+                        ->where('user_id', Auth::id())
+                        ->first();
+                    
+                    if ($sessionRecord && isset($sessionRecord->last_activity)) {
+                        $lastActive = $sessionRecord->last_activity;
+                    }
+                } catch (\Exception $e) {
+                    // If DB query fails, use current timestamp
+                    Log::warning('PinLock: Failed to query sessions table', [
+                        'error' => $e->getMessage(),
+                        'driver' => $sessionDriver
+                    ]);
+                }
             }
             
+            // Set the initial last_active_at - ensure it's saved
             session(['last_active_at' => $lastActive]);
+            // Force session write for file driver
+            if ($sessionDriver === 'file') {
+                session()->save();
+            }
         }
         
         $now = now()->timestamp;
@@ -75,12 +95,23 @@ class PinLock
                 'locked' => true,
                 'url.intended' => $request->fullUrl(),
             ]);
+            // Force session save for file driver
+            $sessionDriver = config('session.driver');
+            if ($sessionDriver === 'file') {
+                session()->save();
+            }
             return redirect()->route('lock.show');
         }
 
         // Update last active timestamp only when session is not locked
         // This allows us to track true user activity vs session auto-updates
         session(['last_active_at' => $now]);
+        
+        // Force session save for file driver to ensure persistence
+        $sessionDriver = config('session.driver');
+        if ($sessionDriver === 'file') {
+            session()->save();
+        }
         
         return $next($request);
     }

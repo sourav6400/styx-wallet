@@ -62,20 +62,39 @@ Route::get('/debug-session', function () {
         return response()->json(['error' => 'Not authenticated'], 401);
     }
     
+    $sessionDriver = config('session.driver');
     $sessionId = session()->getId();
-    $sessionRecord = DB::table('sessions')
-        ->where('id', $sessionId)
-        ->where('user_id', Auth::id())
-        ->first();
+    $sessionRecord = null;
+    
+    // Only query database if using database driver
+    if ($sessionDriver === 'database') {
+        $sessionRecord = DB::table('sessions')
+            ->where('id', $sessionId)
+            ->where('user_id', Auth::id())
+            ->first();
+    }
+    
+    // Check session file if using file driver
+    $sessionFileInfo = null;
+    if ($sessionDriver === 'file') {
+        $sessionPath = storage_path('framework/sessions/' . $sessionId);
+        $sessionFileInfo = [
+            'file_exists' => file_exists($sessionPath),
+            'file_readable' => file_exists($sessionPath) ? is_readable($sessionPath) : false,
+            'file_path' => $sessionPath,
+            'file_permissions' => file_exists($sessionPath) ? substr(sprintf('%o', fileperms($sessionPath)), -4) : 'N/A',
+        ];
+    }
     
     return response()->json([
         'session_id' => $sessionId,
         'user_id' => Auth::id(),
-        'session_driver' => config('session.driver'),
+        'session_driver' => $sessionDriver,
         'session_data' => [
             'locked' => session('locked', 'not set'),
             'last_active_at' => session('last_active_at', 'not set'),
             'url_intended' => session('url.intended', 'not set'),
+            'all_session_data_keys' => array_keys(session()->all()),
         ],
         'session_record' => $sessionRecord ? [
             'id' => $sessionRecord->id,
@@ -83,10 +102,17 @@ Route::get('/debug-session', function () {
             'last_activity' => $sessionRecord->last_activity,
             'last_activity_readable' => date('Y-m-d H:i:s', $sessionRecord->last_activity),
             'ip_address' => $sessionRecord->ip_address,
-        ] : 'No session record found',
+        ] : ($sessionDriver === 'database' ? 'No session record found' : 'N/A (using file driver)'),
+        'session_file_info' => $sessionFileInfo,
         'current_time' => now()->timestamp,
         'current_time_readable' => now()->format('Y-m-d H:i:s'),
         'time_since_last_activity' => $sessionRecord ? (now()->timestamp - $sessionRecord->last_activity) : 'N/A',
+        'session_config' => [
+            'secure' => config('session.secure'),
+            'domain' => config('session.domain'),
+            'same_site' => config('session.same_site'),
+            'lifetime' => config('session.lifetime'),
+        ],
     ]);
 })->middleware('auth');
 
