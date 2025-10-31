@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PinLock
 {
@@ -29,30 +30,46 @@ class PinLock
             return $next($request);
         }
 
-        // $timeout = 300; // seconds, or higher for production
-        $timeout = 300;
+        $timeout = 300; // 5 minutes in seconds
+        $isLocked = session('locked', false);
+
+        // If already locked, redirect to lock screen
+        if ($isLocked === true) {
+            session(['url.intended' => $request->fullUrl()]);
+            return redirect()->route('lock.show');
+        }
+
+        // IMPORTANT: We use session payload 'last_active_at' instead of sessions.last_activity
+        // because Laravel automatically updates last_activity on EVERY request for session expiration.
+        // We need to track when user was last ACTIVE (not just when session was touched),
+        // so we store it in session payload and only update it when user successfully accesses protected routes.
         
-        // Get last active timestamp with proper fallback - use session() helper for compatibility
         $lastActive = session('last_active_at');
         if (empty($lastActive)) {
-            $lastActive = now()->timestamp;
+            // Initialize on first check - use current time or fallback to session's last_activity
+            $sessionId = session()->getId();
+            $sessionRecord = DB::table('sessions')
+                ->where('id', $sessionId)
+                ->where('user_id', Auth::id())
+                ->first();
+            
+            $lastActive = $sessionRecord ? $sessionRecord->last_activity : now()->timestamp;
             session(['last_active_at' => $lastActive]);
         }
         
         $now = now()->timestamp;
-        $isLocked = session('locked', false);
 
-        // If session is locked or last activity exceeded timeout
-        if (($now - (int)$lastActive) > $timeout || $isLocked === true) {
+        // Check if user has been inactive beyond timeout
+        if (($now - (int)$lastActive) > $timeout) {
             session([
                 'locked' => true,
                 'url.intended' => $request->fullUrl(),
             ]);
-            
             return redirect()->route('lock.show');
         }
 
-        // Update last active timestamp
+        // Update last active timestamp only when session is not locked
+        // This allows us to track true user activity vs session auto-updates
         session(['last_active_at' => $now]);
         
         return $next($request);
