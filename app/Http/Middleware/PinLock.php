@@ -31,20 +31,30 @@ class PinLock
 
         // $timeout = 300; // seconds, or higher for production
         $timeout = 300;
-        $lastActive = session('last_active_at', now()->timestamp);
+        
+        // Get last active timestamp with proper fallback - use session() helper for compatibility
+        $lastActive = session('last_active_at');
+        if (empty($lastActive)) {
+            $lastActive = now()->timestamp;
+            session(['last_active_at' => $lastActive]);
+        }
+        
         $now = now()->timestamp;
+        $isLocked = session('locked', false);
 
         // If session is locked or last activity exceeded timeout
-        if (($now - $lastActive) > $timeout || session('locked', false) === true) {
+        if (($now - (int)$lastActive) > $timeout || $isLocked === true) {
             session([
                 'locked' => true,
                 'url.intended' => $request->fullUrl(),
             ]);
+            
             return redirect()->route('lock.show');
         }
 
         // Update last active timestamp
         session(['last_active_at' => $now]);
+        
         return $next($request);
     }
 }
