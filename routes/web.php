@@ -70,7 +70,7 @@ Route::get('/debug-session', function () {
     if ($sessionDriver === 'database') {
         $sessionRecord = DB::table('sessions')
             ->where('id', $sessionId)
-            ->where('user_id', Auth::id())
+            ->where('user_id', Auth::user()->id)
             ->first();
     }
     
@@ -88,7 +88,7 @@ Route::get('/debug-session', function () {
     
     return response()->json([
         'session_id' => $sessionId,
-        'user_id' => Auth::id(),
+        'user_id' => Auth::user()->id,
         'session_driver' => $sessionDriver,
         'session_data' => [
             'locked' => session('locked', 'not set'),

@@ -63,7 +63,7 @@ class PinLock
                     $sessionId = session()->getId();
                     $sessionRecord = DB::table('sessions')
                         ->where('id', $sessionId)
-                        ->where('user_id', Auth::id())
+                        ->where('user_id', Auth::user()->id)
                         ->first();
                     
                     if ($sessionRecord && isset($sessionRecord->last_activity)) {

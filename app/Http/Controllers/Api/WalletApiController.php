@@ -419,7 +419,7 @@ class WalletApiController extends Controller
             ], 400);
         }
 
-        $userId = Auth::id();
+        $userId = Auth::user()->id;
         $wallet = Wallet::where('user_id', $userId)->where('chain', $chain)->first();
 
         if (!$wallet) {
@@ -635,7 +635,7 @@ class WalletApiController extends Controller
                 ], 400);
             }
 
-            $userId = Auth::id();
+            $userId = Auth::user()->id;
             $wallet = Wallet::where('user_id', $userId)->where('chain', $chain)->first();
             $walletAddress = $wallet->address ?? null;
             $tokens = $balanceService->getFilteredTokens();
@@ -801,7 +801,7 @@ class WalletApiController extends Controller
 
     private function walletInfoUpdate($token)
     {
-        $user_id = Auth::id();
+        $user_id = Auth::user()->id;
         $upperSymbol = strtoupper($token);
 
         $chainNames = [
@@ -896,7 +896,7 @@ class WalletApiController extends Controller
 
     private function getTransactionsData($symbol = null)
     {
-        $user_id = Auth::id();
+        $user_id = Auth::user()->id;
 
         if ($symbol == null) {
             $wallet_addresses = Wallet::where('user_id', $user_id)
