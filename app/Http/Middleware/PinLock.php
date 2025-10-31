@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PinLock
 {
@@ -45,22 +46,31 @@ class PinLock
         // so we store it in session payload and only update it when user successfully accesses protected routes.
         
         $lastActive = session('last_active_at');
-        if (empty($lastActive)) {
-            // Initialize on first check - use current time or fallback to session's last_activity
-            $sessionId = session()->getId();
-            $sessionRecord = DB::table('sessions')
-                ->where('id', $sessionId)
-                ->where('user_id', Auth::id())
-                ->first();
+        
+        if (empty($lastActive) || !is_numeric($lastActive)) {
+            // Initialize on first check - try to get from session record or use current time
+            try {
+                $sessionId = session()->getId();
+                $sessionRecord = DB::table('sessions')
+                    ->where('id', $sessionId)
+                    ->where('user_id', Auth::id())
+                    ->first();
+                
+                $lastActive = $sessionRecord ? $sessionRecord->last_activity : now()->timestamp;
+            } catch (\Exception $e) {
+                // If DB query fails, use current timestamp
+                $lastActive = now()->timestamp;
+                Log::warning('PinLock: Failed to query sessions table', ['error' => $e->getMessage()]);
+            }
             
-            $lastActive = $sessionRecord ? $sessionRecord->last_activity : now()->timestamp;
             session(['last_active_at' => $lastActive]);
         }
         
         $now = now()->timestamp;
+        $timeSinceLastActive = $now - (int)$lastActive;
 
         // Check if user has been inactive beyond timeout
-        if (($now - (int)$lastActive) > $timeout) {
+        if ($timeSinceLastActive > $timeout) {
             session([
                 'locked' => true,
                 'url.intended' => $request->fullUrl(),

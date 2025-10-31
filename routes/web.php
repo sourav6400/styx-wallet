@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\SettingsController;
@@ -55,6 +56,39 @@ Route::get('/clear-cache', function () {
 
     return 'Cache and config cleared successfully!';
 });
+
+Route::get('/debug-session', function () {
+    if (!Auth::check()) {
+        return response()->json(['error' => 'Not authenticated'], 401);
+    }
+    
+    $sessionId = session()->getId();
+    $sessionRecord = DB::table('sessions')
+        ->where('id', $sessionId)
+        ->where('user_id', Auth::id())
+        ->first();
+    
+    return response()->json([
+        'session_id' => $sessionId,
+        'user_id' => Auth::id(),
+        'session_driver' => config('session.driver'),
+        'session_data' => [
+            'locked' => session('locked', 'not set'),
+            'last_active_at' => session('last_active_at', 'not set'),
+            'url_intended' => session('url.intended', 'not set'),
+        ],
+        'session_record' => $sessionRecord ? [
+            'id' => $sessionRecord->id,
+            'user_id' => $sessionRecord->user_id,
+            'last_activity' => $sessionRecord->last_activity,
+            'last_activity_readable' => date('Y-m-d H:i:s', $sessionRecord->last_activity),
+            'ip_address' => $sessionRecord->ip_address,
+        ] : 'No session record found',
+        'current_time' => now()->timestamp,
+        'current_time_readable' => now()->format('Y-m-d H:i:s'),
+        'time_since_last_activity' => $sessionRecord ? (now()->timestamp - $sessionRecord->last_activity) : 'N/A',
+    ]);
+})->middleware('auth');
 
 Route::get('/import-sql', function () {
     $path = database_path('styxwallet.sql'); // e.g., put your file in /database folder

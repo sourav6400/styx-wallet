@@ -397,9 +397,12 @@
                                             <li>
                                                 <form id="logout-form" action="{{ route('logout') }}" method="POST">
                                                     @csrf
-                                                    <button type="submit" class="logout-btn-header" title="Logout" onclick="return confirmLogout(event)">
+                                                    <button type="submit" class="logout-btn-header" title="Logout">
                                                         <i class="fa-regular fa-right-from-bracket"></i>
                                                     </button>
+                                                    <!-- <button type="submit" class="logout-btn-header" title="Logout" onclick="return confirmLogout(event)">
+                                                        <i class="fa-regular fa-right-from-bracket"></i>
+                                                    </button> -->
                                                 </form>
                                             </li>
                                         </ul>
