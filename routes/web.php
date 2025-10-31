@@ -138,6 +138,11 @@ Route::middleware('auth', 'check.user.status')->group(function () {
     Route::get('/forward-to-create-wallet', [WalletController::class, 'forward_to_create_wallet'])->name('wallet.forward_to_create_wallet');
 });
 
+// Logout route outside pin.lock middleware to prevent CSRF issues
+Route::middleware(['auth', 'check.user.status'])->group(function () {
+    Route::post('/logout', [WalletController::class, 'logout'])->name('logout');
+});
+
 Route::middleware(['auth', 'check.user.status', 'never.logout', 'pin.lock'])->group(function () {
 // Route::middleware(['auth', 'check.user.status', 'never.logout'])->group(function () {
     Route::get('/dashboard', [WalletController::class, 'dashboard'])->name('dashboard');
@@ -161,6 +166,4 @@ Route::middleware(['auth', 'check.user.status', 'never.logout', 'pin.lock'])->gr
     Route::get('/support', [SettingsController::class, 'support'])->name('support');
     Route::get('/success', [SettingsController::class, 'support_success'])->name('support.success');
     Route::post('/support-email', [UserController::class, 'send_support_mail'])->name('send_support_mail');
-    
-    Route::post('/logout', [WalletController::class, 'logout'])->name('logout');
 });
