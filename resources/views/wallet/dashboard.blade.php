@@ -66,8 +66,7 @@
                                                     alt="{{ $symbol }} icon"></li>
                                         @endif
                                         <li>
-                                            <a href="/my-wallet/{{ strtolower($token['symbol']) }}"
-                                                style="text-decoration: none; color: inherit;">
+                                            <a href="/my-wallet/{{ strtolower($token['symbol']) }}" style="text-decoration: none; color: inherit;">
                                                 <h4>{{ $token['name'] }}</h4>
                                                 <h5>{{ $token['symbol'] }}</h5>
                                             </a>

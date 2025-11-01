@@ -13,9 +13,6 @@
     <!-- Title -->
     <title>{{ $title }} - STYX</title>
 
-    <!-- CSRF Token Meta Tag for AJAX requests -->
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-
     <!-- Fav Icon -->
     <link rel="icon" href="{{ asset('images/favicon.ico') }}">
 
@@ -400,10 +397,6 @@
                                             <li>
                                                 <form id="logout-form" action="{{ route('logout') }}" method="POST">
                                                     @csrf
-                                                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
-                                                    <!-- <button type="submit" class="logout-btn-header" title="Logout">
-                                                        <i class="fa-regular fa-right-from-bracket"></i>
-                                                    </button> -->
                                                     <button type="submit" class="logout-btn-header" title="Logout" onclick="return confirmLogout(event)">
                                                         <i class="fa-regular fa-right-from-bracket"></i>
                                                     </button>
@@ -472,7 +465,6 @@
                         <li>
                             <form id="logout-form-mobile" action="{{ route('logout') }}" method="POST">
                                 @csrf
-                                <input type="hidden" name="_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="logout-btn-header" title="Logout" onclick="return confirmLogout(event)">
                                     <i class="fa-regular fa-right-from-bracket"></i>
                                 </button>

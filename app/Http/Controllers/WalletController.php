@@ -1210,16 +1210,9 @@ class WalletController extends Controller
 
     public function logout(Request $request)
     {
-        // Logout user
         Auth::logout();
-        
-        // Invalidate and regenerate session to prevent CSRF token issues
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
-        // Clear any session data
-        session()->flush();
-        
         return redirect('/');
     }
 }
