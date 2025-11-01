@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\SettingsController;
@@ -57,65 +56,6 @@ Route::get('/clear-cache', function () {
     return 'Cache and config cleared successfully!';
 });
 
-Route::get('/debug-session', function () {
-    if (!Auth::check()) {
-        return response()->json(['error' => 'Not authenticated'], 401);
-    }
-    
-    $sessionDriver = config('session.driver');
-    $sessionId = session()->getId();
-    $sessionRecord = null;
-    
-    // Only query database if using database driver
-    if ($sessionDriver === 'database') {
-        $sessionRecord = DB::table('sessions')
-            ->where('id', $sessionId)
-            ->where('user_id', Auth::user()->id)
-            ->first();
-    }
-    
-    // Check session file if using file driver
-    $sessionFileInfo = null;
-    if ($sessionDriver === 'file') {
-        $sessionPath = storage_path('framework/sessions/' . $sessionId);
-        $sessionFileInfo = [
-            'file_exists' => file_exists($sessionPath),
-            'file_readable' => file_exists($sessionPath) ? is_readable($sessionPath) : false,
-            'file_path' => $sessionPath,
-            'file_permissions' => file_exists($sessionPath) ? substr(sprintf('%o', fileperms($sessionPath)), -4) : 'N/A',
-        ];
-    }
-    
-    return response()->json([
-        'session_id' => $sessionId,
-        'user_id' => Auth::user()->id,
-        'session_driver' => $sessionDriver,
-        'session_data' => [
-            'locked' => session('locked', 'not set'),
-            'last_active_at' => session('last_active_at', 'not set'),
-            'url_intended' => session('url.intended', 'not set'),
-            'all_session_data_keys' => array_keys(session()->all()),
-        ],
-        'session_record' => $sessionRecord ? [
-            'id' => $sessionRecord->id,
-            'user_id' => $sessionRecord->user_id,
-            'last_activity' => $sessionRecord->last_activity,
-            'last_activity_readable' => date('Y-m-d H:i:s', $sessionRecord->last_activity),
-            'ip_address' => $sessionRecord->ip_address,
-        ] : ($sessionDriver === 'database' ? 'No session record found' : 'N/A (using file driver)'),
-        'session_file_info' => $sessionFileInfo,
-        'current_time' => now()->timestamp,
-        'current_time_readable' => now()->format('Y-m-d H:i:s'),
-        'time_since_last_activity' => $sessionRecord ? (now()->timestamp - $sessionRecord->last_activity) : 'N/A',
-        'session_config' => [
-            'secure' => config('session.secure'),
-            'domain' => config('session.domain'),
-            'same_site' => config('session.same_site'),
-            'lifetime' => config('session.lifetime'),
-        ],
-    ]);
-})->middleware('auth');
-
 Route::get('/import-sql', function () {
     $path = database_path('styxwallet.sql'); // e.g., put your file in /database folder
     $sql = file_get_contents($path);
@@ -164,11 +104,6 @@ Route::middleware('auth', 'check.user.status')->group(function () {
     Route::get('/forward-to-create-wallet', [WalletController::class, 'forward_to_create_wallet'])->name('wallet.forward_to_create_wallet');
 });
 
-// Logout route outside pin.lock middleware to prevent CSRF issues
-Route::middleware(['auth', 'check.user.status'])->group(function () {
-    Route::post('/logout', [WalletController::class, 'logout'])->name('logout');
-});
-
 Route::middleware(['auth', 'check.user.status', 'never.logout', 'pin.lock'])->group(function () {
 // Route::middleware(['auth', 'check.user.status', 'never.logout'])->group(function () {
     Route::get('/dashboard', [WalletController::class, 'dashboard'])->name('dashboard');
@@ -192,4 +127,6 @@ Route::middleware(['auth', 'check.user.status', 'never.logout', 'pin.lock'])->gr
     Route::get('/support', [SettingsController::class, 'support'])->name('support');
     Route::get('/success', [SettingsController::class, 'support_success'])->name('support.success');
     Route::post('/support-email', [UserController::class, 'send_support_mail'])->name('send_support_mail');
+    
+    Route::post('/logout', [WalletController::class, 'logout'])->name('logout');
 });
