@@ -11,10 +11,10 @@
     <meta name="designer" content="">
 
     <!-- Title -->
-    <title>{{$title}} - STYX</title>
+    <title>{{$title}} - {{ config('app.name') }}</title>
 
     <!-- Fav Icon -->
-    <link rel="icon" href="{{ asset('images/favicon.ico') }}">
+    <link rel="icon" href="{{ wallet_favicon() }}">
 
     <!-- Font Awesome Icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">

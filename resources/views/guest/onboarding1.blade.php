@@ -7,7 +7,7 @@
                 <img src="images/thumb/thumb2.png" alt="">
             </div>
             <div class="obCard_body">
-                <h3>Styx Wallet</h3>
+                <h3>{{ config('app.name') }}</h3>
                 <p>Your all-in-one, non-custodial wallet - secure, intuitive, and built to manage every digital asset you
                     own</p>
                 <button type="button" onclick="location.href = '{{ route('onboarding2') }}';">Continue</button>

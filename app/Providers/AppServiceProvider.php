@@ -20,6 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Load wallet helper functions
+        require_once app_path('Helpers/WalletHelper.php');
+
         // Force HTTPS if the request is behind a proxy (like ngrok) with HTTPS
         if (request()->header('X-Forwarded-Proto') === 'https' || request()->secure()) {
             URL::forceScheme('https');

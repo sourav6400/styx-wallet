@@ -11,10 +11,10 @@
     <meta name="designer" content="">
 
     <!-- Title -->
-    <title>Enter PIN - STYX</title>
+    <title>Enter PIN - {{ config('app.name') }}</title>
 
     <!-- Fav Icon -->
-    <link rel="icon" href="{{ asset('images/favicon.ico') }}">
+    <link rel="icon" href="{{ wallet_favicon() }}">
 
     <!-- Font Awesome Icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
@@ -38,7 +38,7 @@
     <div class="onboarding_wrapper walletRestoreV2 createAnAccount position-relative">
         <div class="createAnAccount_card">
             <div class="createAnAccount_header createNewWallet mb-5">
-                <img src="{{ asset('images/logo/logo_main.svg') }}" alt="">
+                <img src="{{ wallet_logo_main() }}" alt="">
             </div>
             <div class="createAnAccount_body">
                 <form method="POST" action="{{ route('lock.unlock') }}" class="walletRestoreV2_form openWalletByPin">

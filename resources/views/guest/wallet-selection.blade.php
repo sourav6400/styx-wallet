@@ -3,7 +3,7 @@
     <div class="onboarding_wrapper createAnAccount position-relative px-4">
         <div class="walletSelection_wrapper">
             <div class="walletSelection_logo">
-                <a href="#"><img src="images/logo/logo.png" alt=""></a>
+                <a href="#"><img src="{{ wallet_logo() }}" alt=""></a>
             </div>
 
             <div class="walletSelectionCard_wrapper">

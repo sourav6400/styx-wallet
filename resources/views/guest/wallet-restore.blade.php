@@ -5,7 +5,7 @@
                 src="images/icon/icon1.svg" alt=""> Back</a>
         <div class="createAnAccount_card">
             <div class="createAnAccount_header createNewWallet">
-                <img src="images/logo/logo_main.svg" alt="">
+                <img src="{{ wallet_logo_main() }}" alt="">
             </div>
             <div class="createAnAccount_body">
                 <h3>Restore Your Wallet</h3>

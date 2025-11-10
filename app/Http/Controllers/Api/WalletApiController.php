@@ -20,10 +20,6 @@ use Laravel\Sanctum\HasApiTokens;
 
 class WalletApiController extends Controller
 {
-    private const TATUM_HEADERS = [
-        'accept' => 'application/json',
-        'x-api-key' => 't-68ad501c796ef2921a0978d2-b0b183081e7449cfbcd9d531',
-    ];
     /**
      * Generate new mnemonic phrases for wallet creation
      */
@@ -455,7 +451,7 @@ class WalletApiController extends Controller
 
         try {
             $http = Http::timeout(10)
-                ->withHeaders(self::TATUM_HEADERS)
+                ->withHeaders(config('tatum.headers'))
                 ->withHeaders([
                     'content-type' => 'application/json',
                 ])
@@ -464,7 +460,7 @@ class WalletApiController extends Controller
             $endpoints = [
                 'Bitcoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
                     return $http->post(
-                        "https://api.tatum.io/v3/bitcoin/transaction",
+                        config('tatum.base_url_v3') . "/bitcoin/transaction",
                         [
                             "fromAddress" => [["address" => $senderAddress, "privateKey" => $privateKey]],
                             "to" => [["address" => $receiverAddress, "value" => (float) $amount]],
@@ -475,7 +471,7 @@ class WalletApiController extends Controller
                 },
                 'Litecoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
                     return $http->post(
-                        "https://api.tatum.io/v3/litecoin/transaction",
+                        config('tatum.base_url_v3') . "/litecoin/transaction",
                         [
                             "fromAddress" => [["address" => $senderAddress, "privateKey" => $privateKey]],
                             "to" => [["address" => $receiverAddress, "value" => (float) $amount]],
@@ -486,7 +482,7 @@ class WalletApiController extends Controller
                 },
                 'Dogecoin' => function() use ($http, $senderAddress, $privateKey, $receiverAddress, $amount) {
                     return $http->post(
-                        "https://api.tatum.io/v3/dogecoin/transaction",
+                        config('tatum.base_url_v3') . "/dogecoin/transaction",
                         [
                             "fromAddress" => [["address" => $senderAddress, "privateKey" => $privateKey]],
                             "to" => [["address" => $receiverAddress, "value" => (float) $amount]],
@@ -497,7 +493,7 @@ class WalletApiController extends Controller
                 },
                 'BNB' => function() use ($http, $privateKey, $receiverAddress, $amount) {
                     return $http->post(
-                        "https://api.tatum.io/v3/bsc/transaction",
+                        config('tatum.base_url_v3') . "/bsc/transaction",
                         [
                             "fromPrivateKey" => $privateKey,
                             "to" => $receiverAddress,
@@ -508,7 +504,7 @@ class WalletApiController extends Controller
                 },
                 'Tether' => function() use ($http, $privateKey, $receiverAddress, $amount) {
                     return $http->post(
-                        "https://api.tatum.io/v3/tron/transaction",
+                        config('tatum.base_url_v3') . "/tron/transaction",
                         [
                             "fromPrivateKey" => $privateKey,
                             "to" => $receiverAddress,
@@ -518,7 +514,7 @@ class WalletApiController extends Controller
                 },
                 'Tron' => function() use ($http, $privateKey, $receiverAddress, $amount) {
                     return $http->post(
-                        "https://api.tatum.io/v3/tron/transaction",
+                        config('tatum.base_url_v3') . "/tron/transaction",
                         [
                             "fromPrivateKey" => $privateKey,
                             "to" => $receiverAddress,
@@ -528,7 +524,7 @@ class WalletApiController extends Controller
                 },
                 'Ethereum' => function() use ($http, $privateKey, $receiverAddress, $contractAddress, $amount) {
                     return $http->post(
-                        "https://api.tatum.io/v3/blockchain/token/transaction",
+                        config('tatum.base_url_v3') . "/blockchain/token/transaction",
                         [
                             "chain" => "ETH",
                             "to" => $receiverAddress,
@@ -834,9 +830,9 @@ class WalletApiController extends Controller
             try {
                 if ($chain === 'xrp') {
                     $response = Http::timeout(10)
-                        ->withHeaders(self::TATUM_HEADERS)
+                        ->withHeaders(config('tatum.headers'))
                         ->retry(3, 200)
-                        ->get("https://api.tatum.io/v3/xrp/account");
+                        ->get(config('tatum.base_url_v3') . "/xrp/account");
 
                     if ($response->successful()) {
                         $data = $response->json();
@@ -856,9 +852,9 @@ class WalletApiController extends Controller
 
                     $xpub = $env->xpub;
                     $response = Http::timeout(10)
-                        ->withHeaders(self::TATUM_HEADERS)
+                        ->withHeaders(config('tatum.headers'))
                         ->retry(3, 200)
-                        ->get("https://api.tatum.io/v3/{$chain}/address/{$xpub}/{$user_id}");
+                        ->get(config('tatum.base_url_v3') . "/{$chain}/address/{$xpub}/{$user_id}");
 
                     if ($response->successful()) {
                         $data = $response->json();
@@ -870,10 +866,10 @@ class WalletApiController extends Controller
 
                     $mnemonic = $env->mnemonic;
                     $response = Http::timeout(10)
-                        ->withHeaders(self::TATUM_HEADERS)
+                        ->withHeaders(config('tatum.headers'))
                         ->retry(3, 200)
                         ->withHeaders(['Content-Type' => 'application/json'])
-                        ->post("https://api.tatum.io/v3/{$chain}/wallet/priv", [
+                        ->post(config('tatum.base_url_v3') . "/{$chain}/wallet/priv", [
                             "index" => $user_id,
                             "mnemonic" => $mnemonic
                         ]);
@@ -934,11 +930,11 @@ class WalletApiController extends Controller
         $allTransfers = [];
 
         foreach ($wallet_addresses as $address) {
-            $url = "https://api.tatum.io/v4/data/transaction/history?chain=ethereum-mainnet&addresses=" . $address . "&sort=DESC";
+            $url = config('tatum.base_url_v4') . "/data/transaction/history?chain=ethereum-mainnet&addresses=" . $address . "&sort=DESC";
 
             try {
                 $response = Http::timeout(10)
-                    ->withHeaders(self::TATUM_HEADERS)
+                    ->withHeaders(config('tatum.headers'))
                     ->retry(3, 200)
                     ->get($url);
 

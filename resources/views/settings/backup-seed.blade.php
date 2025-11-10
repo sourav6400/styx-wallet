@@ -11,7 +11,7 @@
                 </div>
                 <div class="settingsFaq_wrapper privateKeyForm_wrapper">
                     <p>Never share your 12-word backup phrase or private keys with anyone. Avoid entering your information
-                        on any web wallets, online forms, or websites impersonating STYX Wallet. Sharing this information
+                        on any web wallets, online forms, or websites impersonating {{ config('app.name') }}. Sharing this information
                         puts your funds at risk of permanent loss.</p>
                     <div class="createAnAccount_body">
                         <form action="">

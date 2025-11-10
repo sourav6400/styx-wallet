@@ -11,10 +11,10 @@
     <meta name="designer" content="">
 
     <!-- Title -->
-    <title>{{ $title }} - STYX</title>
+    <title>{{ $title }} - {{ config('app.name') }}</title>
 
     <!-- Fav Icon -->
-    <link rel="icon" href="{{ asset('images/favicon.ico') }}">
+    <link rel="icon" href="{{ wallet_favicon() }}">
 
     <!-- Font Awesome Icon -->
     <link rel="stylesheet" href="{{ asset('FontAwesome6Pro/css/all.min.css') }}">
@@ -203,7 +203,7 @@
                 <div class="col-3 aside_col">
                     <aside>
                         <div class="sideLogo">
-                            <a href="#"><img src="{{ asset('images/logo/logo_main.svg') }}" alt=""></a>
+                            <a href="#"><img src="{{ wallet_logo_main() }}" alt=""></a>
                         </div>
                         <div class="sideMenu_content">
                             <ul>
@@ -254,7 +254,7 @@
                                             <span class="line"></span>
                                         </div>
                                         <ul>
-                                            <li><img class="logo" src="{{ asset('images/logo/logo_main.svg') }}"
+                                            <li><img class="logo" src="{{ wallet_logo_main() }}"
                                                     alt=""></li>
                                             <li>
                                                 <h6 class="name" id="username"></h6>
@@ -415,7 +415,7 @@
                             <div class="cw-preloader-overlay" id="cwPreloader">
                                 <div class="cw-preloader-container">
                                     <!-- <div class="cw-preloader-title">Crypto Wallet</div> -->
-                                    <img class="cw-preloader-title d-block mx-auto" src="./images/logo/logo_main.svg"
+                                    <img class="cw-preloader-title d-block mx-auto" src="{{ wallet_logo_main() }}"
                                         alt="">
                                     <div class="cw-dots-container">
                                         <div class="cw-dot"></div>

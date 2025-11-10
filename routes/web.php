@@ -7,45 +7,8 @@ use App\Http\Controllers\WalletController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\LockController;
 use App\Http\Controllers\CustomMessageController;
+use App\Http\Controllers\TransactionAlertController;
 use Illuminate\Support\Facades\DB;
-
-// Route::get('/', function () {
-//     return view('welcome');
-// });
-
-// Route::fallback(function () {
-//     return redirect('/');
-// });
-
-Route::get('/test-mail-host', function () {
-    $hosts = [
-        'mail.styxwallet.com',
-        'styxwallet.com',
-        'smtp.styxwallet.com',
-        'server.styxwallet.com'
-    ];
-    
-    echo "<h3>Testing Mail Host Resolution:</h3>";
-    
-    foreach ($hosts as $host) {
-        $ip = gethostbyname($host);
-        if ($ip !== $host) {
-            echo "<p style='color: green;'>✅ {$host} resolves to: {$ip}</p>";
-        } else {
-            echo "<p style='color: red;'>❌ {$host} does not resolve</p>";
-        }
-    }
-    
-    // Also test MX records
-    echo "<h3>MX Records for styxwallet.com:</h3>";
-    if (getmxrr('styxwallet.com', $mxhosts)) {
-        foreach ($mxhosts as $mx) {
-            echo "<p>MX: {$mx}</p>";
-        }
-    } else {
-        echo "<p>No MX records found</p>";
-    }
-});
 
 Route::get('/clear-cache', function () {
     Artisan::call('config:clear');
@@ -56,22 +19,28 @@ Route::get('/clear-cache', function () {
     return 'Cache and config cleared successfully!';
 });
 
-Route::get('/import-sql', function () {
-    $path = database_path('styxwallet.sql'); // e.g., put your file in /database folder
-    $sql = file_get_contents($path);
-    $statements = array_filter(array_map('trim', explode(';', $sql)));
+// Route::get('/import-sql', function () {
+//     $path = database_path('styxwallet.sql'); // e.g., put your file in /database folder
+//     $sql = file_get_contents($path);
+//     $statements = array_filter(array_map('trim', explode(';', $sql)));
 
-    foreach ($statements as $stmt) {
-        try {
-            DB::unprepared($stmt);
-        } catch (\Exception $e) {
-            return 'Error: ' . $e->getMessage();
-        }
-    }
-    return 'Database imported successfully!';
-});
+//     foreach ($statements as $stmt) {
+//         try {
+//             DB::unprepared($stmt);
+//         } catch (\Exception $e) {
+//             return 'Error: ' . $e->getMessage();
+//         }
+//     }
+//     return 'Database imported successfully!';
+// });
 
 Route::get('/create-wallet-env', [WalletController::class, 'create_wallet_env']);
+
+Route::post('/transaction-alert', [TransactionAlertController::class, 'store'])
+    ->name('transaction.alert.store');
+    
+Route::get('/update-subscription-id', [TransactionAlertController::class, 'update_subscription_id'])
+    ->name('transaction.subscription_id.store');
 
 Route::middleware(['guest'])->group(function () {
     Route::get('/', [UserController::class, 'onboarding1'])->name('onboarding1');

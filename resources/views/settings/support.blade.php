@@ -2,14 +2,14 @@
 @section('content')
 <div class="dashboardRightMain_body">
 	<div class="support_body_wrapper">
-		<h2>STYX Wallet Support</h2>
+		<h2>{{ config('app.name') }} Support</h2>
 		<p>Keep your wallet secure and up to date. <br> Download the latest version now:</p>
 		<a href="#">styxwallet.io/downloads</a>
 		<div class="support_btn" data-bs-toggle="modal" data-bs-target="#staticBackdrop">
 			<img src="{{ asset('images/vector/vector12.png') }}" alt="">
 			<span>Contact Support</span>
 		</div>
-		<h6>Anonymous STYX ID</h6>
+		<h6>Anonymous {{ config('app.name') }} ID</h6>
 		<h5>9cc46939a6c4f6...95933fe7ab3676</h5>
 	</div>
 </div>
@@ -28,12 +28,12 @@
 				<form action="https://api.web3forms.com/submit" method="POST">
 				    <input type="hidden" name="access_key" value="40a7ee4d-3338-4e0f-9162-69fcf4fd0891">
 					<!--<input type="hidden" name="access_key" value="bfa896a2-d661-407a-a53e-781616cbf52a">--> <!--this will send to "imsourav6400@gmail.com" for testing-->
-				    <input type="hidden" name="subject" value="New Support Request from STYX Wallet">
-				    <input type="hidden" name="from_name" value="STYX Wallet">
+				    <input type="hidden" name="subject" value="New Support Request from {{ config('app.name') }}">
+				    <input type="hidden" name="from_name" value="{{ config('app.name') }}">
 					<input type="hidden" name="user_id" value="{{ $user_id }}">
 				    <!--<input type="hidden" name="email" value="support@styxwallet.com">-->
 				    {{-- <input type="hidden" name="redirect" value="https://web3forms.com/success"> --}}
-					<input type="hidden" name="redirect" value="https://web.styxwallet.com/success">
+					<input type="hidden" name="redirect" value="{{ config('wallet.app_url') }}/success">
 					<div class="row g-0 m-0">
 						<div class="col-12">
 							<div class="form_input">

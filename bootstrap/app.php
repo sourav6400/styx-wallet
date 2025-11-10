@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->use([
             \App\Http\Middleware\TrustProxies::class,
         ]);
+        $middleware->validateCsrfTokens(except: [
+            'transaction-alert',
+        ]);
         $middleware->alias([
             'never.logout'      => \App\Http\Middleware\NeverLogout::class,
             'pin.lock'          => \App\Http\Middleware\PinLock::class,

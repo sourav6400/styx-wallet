@@ -49,97 +49,61 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $sl = 0; @endphp
+                                @foreach($transfers as $key=>$value)
+									@php
+										$hashShort = formatAddress($value->hash);
+										$fromShort = formatAddress($value->from_address);
+										$toShort = formatAddress($value->to_address);
+										$dateTime = formatTimestamp($value->timestamp);
 
-                                @if(in_array($upperSymbol, ['ETH', 'BNB']))
-                                    {{-- ETH/BNB Transactions (same structure) --}}
-                                    @foreach($transfers as $value)
-                                        @php
-                                            $walletAddress = $value['wallet_address'];
-                                            $subtype = $value['transactionSubtype'];
-                                            
-                                            // ETH has additional tokenAddress validation
-                                            if($upperSymbol === 'ETH') {
-                                                $isValidTransaction = in_array($subtype, ['incoming', 'outgoing']) 
-                                                    && isset($value['tokenAddress']) 
-                                                    && $value['tokenAddress'] === '0x6727e93eedd2573795599a817c887112dffc679b';
-                                            } else {
-                                                $isValidTransaction = in_array($subtype, ['incoming', 'outgoing']);
-                                            }
-                                        @endphp
-
-                                        @if($isValidTransaction)
-                                            @php
-                                                $sl++;
-                                                $from = $subtype === 'incoming' ? $value['counterAddress'] : $value['address'];
-                                                $to = $subtype === 'incoming' ? $value['address'] : $value['counterAddress'];
-                                            @endphp
-                                            @include('partials.transaction_row', [
-                                                'sl' => $sl,
-                                                'hash' => $value['hash'],
-                                                'blockNumber' => $value['blockNumber'],
-                                                'from' => $from,
-                                                'to' => $to,
-                                                'amount' => abs($value['amount']),
-                                                'timestamp' => $value['timestamp'],
-                                                'symbol' => $upperSymbol
-                                            ])
-                                        @endif
-                                    @endforeach
-
-                                @elseif(in_array($upperSymbol, ['BTC', 'LTC', 'DOGE']))
-                                    {{-- BTC/LTC/DOGE Transactions --}}
-                                    @foreach($transfers as $value)
-                                        @php
-                                            $sl++;
-                                            $walletAddress = $value['wallet_address'];
-                                            $sender = false;
-                                            $receiver = false;
-                                            $from = null;
-                                            $to = null;
-                                            $amount = null;
-
-                                            // Check inputs
-                                            foreach($value['inputs'] as $input) {
-                                                if($input['coin']['address'] === $walletAddress) {
-                                                    $sender = true;
-                                                    $from = $walletAddress;
-                                                    $amount = $input['coin']['value'];
-                                                    break;
-                                                }
-                                            }
-
-                                            // Check outputs
-                                            $outputAddress = null;
-                                            foreach($value['outputs'] as $output) {
-                                                $outputAddress = $output['address'];
-                                                if($outputAddress === $walletAddress) {
-                                                    $receiver = true;
-                                                    $to = $walletAddress;
-                                                    $amount = $output['value'];
-                                                }
-                                            }
-
-                                            // Determine transaction type
-                                            if($sender) {
-                                                $to = $outputAddress;
-                                            } elseif($receiver) {
-                                                $from = $input['coin']['address'] ?? null;
-                                            }
-                                        @endphp
-
-                                        @include('partials.transaction_row', [
-                                            'sl' => $sl,
-                                            'hash' => $value['hash'],
-                                            'blockNumber' => $value['blockNumber'],
-                                            'from' => $from,
-                                            'to' => $to,
-                                            'amount' => abs($amount/100000000 ?? 0),
-                                            'timestamp' => $value['time'],
-                                            'symbol' => $upperSymbol
-                                        ])
-                                    @endforeach
-                                @endif
+										// If you have variables like $hash, $from, $to, $blockNumber, etc.,
+										// assign them from the object as well:
+										$hash = $value->hash ?? '';
+										$from = $value->from_address ?? '';
+										$to = $value->to_address ?? '';
+										$blockNumber = $value->block_number ?? '';
+										$type = $value->type ?? '';
+									@endphp
+									<tr>
+										<td><div class="value_data"><h5>{{ $key + 1 }}</h5></div></td>
+										<td>
+											<div class="value_data">
+												<div class="flex-center">
+													<h5>{{ $hashShort }}</h5>
+													<button onclick="copyToClipboard('{{ $hash }}', this)" class="copy-btn" title="Copy full address">
+														<i class="fas fa-copy"></i>
+													</button>
+													<span class="copy-alert">Copied!</span>
+												</div>
+											</div>
+										</td>
+										<td><div class="value_data"><h5>{{ $value->block }}</h5></div></td>
+										<td>
+											<div class="value_data">
+												<div class="flex-center">
+													<h5>{{ $fromShort }}</h5>
+													<button onclick="copyToClipboard('{{ $from }}', this)" class="copy-btn" title="Copy full address">
+														<i class="fas fa-copy"></i>
+													</button>
+													<span class="copy-alert">Copied!</span>
+												</div>
+											</div>
+										</td>
+										<td>
+											<div class="value_data">
+												<div class="flex-center">
+													<h5>{{ $toShort }}</h5>
+													<button onclick="copyToClipboard('{{ $to }}', this)" class="copy-btn" title="Copy full address">
+														<i class="fas fa-copy"></i>
+													</button>
+													<span class="copy-alert">Copied!</span>
+												</div>
+											</div>
+										</td>
+										<td><div class="value_data"><h5>{{ number_format($value->amount, 6, '.', '') }} {{ $symbol }}</h5></div></td>
+										<td><div class="value_data"><h5>{{ $dateTime }}</h5></div></td>
+									</tr>
+                                @endforeach
                             </tbody>
                         </table>
                 </div>

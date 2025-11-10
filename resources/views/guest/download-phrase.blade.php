@@ -10,7 +10,7 @@
                 <li class="step is-active" data-step="5"></li>
             </ol>
             <div class="card_titlebar mt-3">
-                <img class="d-block mx-auto" src="images/logo/logo.png" alt="">
+                <img class="d-block mx-auto" src="{{ wallet_logo() }}" alt="">
                 <h3>Download Seed Phrase</h3>
                 <p>Download your seed phrase as a backup file</p>
             </div>

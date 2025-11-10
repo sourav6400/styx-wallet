@@ -8,7 +8,7 @@
             </div>
             <div class="obCard_body">
                 <h3>Redefine Ownership</h3>
-                <p>STYX Wallet is your gateway to total freedom and mastery over your digital wealth.</p>
+                <p>{{ config('app.name') }} is your gateway to total freedom and mastery over your digital wealth.</p>
                 <button type="button" onclick="location.href='{{ route('wallet.selection') }}'">Continue</button>
                 <ul class="ob_dots">
                     <li></li>
