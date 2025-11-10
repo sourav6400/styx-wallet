@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\TransactionAlert;
 use App\Models\Wallet;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 
 class TransactionAlertController extends Controller
 {
@@ -62,7 +64,7 @@ class TransactionAlertController extends Controller
 
         // Save to DB
         $row = TransactionAlert::create([
-            'type'            => 'TRANSACTION_ALERT',
+            'type'            => $type,
             'asset'           => $asset,
             'address'         => $address,
             'blockNumber'     => $blockNumber,
@@ -78,6 +80,27 @@ class TransactionAlertController extends Controller
         
         if(isset($row->id))
         {
+            $transaction = Transaction::where('hash', $txId)->first();
+            if(!$transaction)
+            {
+                $sender = $address;
+                $sender_wallet = Wallet::where('address', $sender)->first();
+                $receiver = $counterAddress;
+                $receiver_wallet = Wallet::where('address', $receiver)->first();
+                $transaction = new Transaction();
+                $transaction->from_id = $sender_wallet->user_id ?? null;
+                $transaction->to_id = $receiver_wallet->user_id ?? null;
+                $transaction->chain = $chain;
+                $transaction->token = $asset;
+                $transaction->hash = $txId;
+                $transaction->from_address = $sender;
+                $transaction->to_address = $receiver;
+                $transaction->block = $blockNumber;
+                $transaction->amount = $amount;
+                $transaction->timestamp = $timestamp;
+                $transaction->source = 'webhook';
+                $transaction->save();
+            }
             return response()->json([
                 'status'   => 'success',
                 'id'       => $row->id,
