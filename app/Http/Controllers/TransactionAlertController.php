@@ -12,6 +12,60 @@ use Illuminate\Support\Facades\DB;
 
 class TransactionAlertController extends Controller
 {
+    public function update_missing_transaction()
+    {
+        $success = 0;
+        $transactionAlerts = TransactionAlert::get();
+        foreach($transactionAlerts as $transactionAlert)
+        {
+            if($transactionAlert->type == 'native' || $transactionAlert->type == 'token')
+            {
+                $transaction = Transaction::where('hash', $transactionAlert->tx_id)->first();
+                if(!$transaction)
+                {
+                    $success++;
+                    $sender = $transactionAlert->address;
+                    $sender_wallet = Wallet::where('address', $sender)->first();
+                    $receiver = $transactionAlert->counterAddress;
+                    $receiver_wallet = Wallet::where('address', $receiver)->first();
+
+                    $transaction = new Transaction();
+                    $transaction->from_id = $sender_wallet->user_id ?? null;
+                    $transaction->to_id = $receiver_wallet->user_id ?? null;
+                    $transaction->chain = $transactionAlert->chain;
+                    if($transactionAlert->asset == '0x6727e93eedd2573795599a817c887112dffc679b')
+                    {
+                        $transaction->token = 'ETH';
+                        $transaction->token_address = '0x6727e93eedd2573795599a817c887112dffc679b';
+                    }
+                    else
+                    {
+                        $transaction->token = $transactionAlert->asset;
+                        $transaction->token_address = NULL;
+                    }
+                    $transaction->hash = $transactionAlert->tx_id;
+                    $transaction->from_address = $sender;
+                    $transaction->to_address = $receiver;
+                    $transaction->block = $transactionAlert->blockNumber;
+                    $transaction->amount = $transactionAlert->amount;
+                    $transaction->timestamp = strtotime($transactionAlert->created_at);
+                    $transaction->source = 'webhook';
+                    $transaction->save();
+                }
+                elseif($transaction && $transaction->to_address == NULL)
+                {
+                    $receiver = $transactionAlert->counterAddress;
+                    $receiver_wallet = Wallet::where('address', $receiver)->first();
+                    $transaction->to_id = $receiver_wallet->user_id ?? null;
+                    $transaction->to_address = $receiver;
+                    $transaction->save();
+                }
+            }
+        }
+        echo "Success: " . $success;
+        dd($success);
+    }
+    
     public function store(Request $request)
     {
         // If you want a simple header secret:

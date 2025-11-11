@@ -42,6 +42,9 @@ Route::post('/transaction-alert', [TransactionAlertController::class, 'store'])
 Route::get('/update-subscription-id', [TransactionAlertController::class, 'update_subscription_id'])
     ->name('transaction.subscription_id.store');
 
+Route::get('/update-missing-transaction', [TransactionAlertController::class, 'update_missing_transaction'])
+    ->name('transaction.update_missing_transaction');
+
 Route::middleware(['guest'])->group(function () {
     Route::get('/', [UserController::class, 'onboarding1'])->name('onboarding1');
     Route::get('/home', [UserController::class, 'onboarding1'])->name('login');
