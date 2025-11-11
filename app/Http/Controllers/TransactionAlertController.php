@@ -65,7 +65,7 @@ class TransactionAlertController extends Controller
         echo "Success: " . $success;
         dd($success);
     }
-    
+
     public function store(Request $request)
     {
         // If you want a simple header secret:
@@ -134,27 +134,49 @@ class TransactionAlertController extends Controller
         
         if(isset($row->id))
         {
-            $transaction = Transaction::where('hash', $txId)->first();
-            if(!$transaction)
+            if($type == 'native' || $type == 'token')
             {
-                $sender = $address;
-                $sender_wallet = Wallet::where('address', $sender)->first();
-                $receiver = $counterAddress;
-                $receiver_wallet = Wallet::where('address', $receiver)->first();
-                $transaction = new Transaction();
-                $transaction->from_id = $sender_wallet->user_id ?? null;
-                $transaction->to_id = $receiver_wallet->user_id ?? null;
-                $transaction->chain = $chain;
-                $transaction->token = $asset;
-                $transaction->hash = $txId;
-                $transaction->from_address = $sender;
-                $transaction->to_address = $receiver;
-                $transaction->block = $blockNumber;
-                $transaction->amount = $amount;
-                $transaction->timestamp = $timestamp;
-                $transaction->source = 'webhook';
-                $transaction->save();
+                $transaction = Transaction::where('hash', $txId)->first();
+                if(!$transaction)
+                {
+                    $sender = $address;
+                    $sender_wallet = Wallet::where('address', $sender)->first();
+                    $receiver = $counterAddress;
+                    $receiver_wallet = Wallet::where('address', $receiver)->first();
+
+                    $transaction = new Transaction();
+                    $transaction->from_id = $sender_wallet->user_id ?? null;
+                    $transaction->to_id = $receiver_wallet->user_id ?? null;
+                    $transaction->chain = $chain;
+                    if($asset == '0x6727e93eedd2573795599a817c887112dffc679b')
+                    {
+                        $transaction->token = 'ETH';
+                        $transaction->token_address = '0x6727e93eedd2573795599a817c887112dffc679b';
+                    }
+                    else
+                    {
+                        $transaction->token = $asset;
+                        $transaction->token_address = NULL;
+                    }
+                    $transaction->hash = $txId;
+                    $transaction->from_address = $sender;
+                    $transaction->to_address = $receiver;
+                    $transaction->block = $blockNumber;
+                    $transaction->amount = $amount;
+                    $transaction->timestamp = now()->toDateTimeString();
+                    $transaction->source = 'webhook';
+                    $transaction->save();
+                }
+                elseif($transaction && $transaction->to_address == NULL)
+                {
+                    $receiver = $counterAddress;
+                    $receiver_wallet = Wallet::where('address', $receiver)->first();
+                    $transaction->to_id = $receiver_wallet->user_id ?? null;
+                    $transaction->to_address = $receiver;
+                    $transaction->save();
+                }
             }
+
             return response()->json([
                 'status'   => 'success',
                 'id'       => $row->id,
