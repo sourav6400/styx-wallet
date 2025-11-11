@@ -300,6 +300,7 @@ class WalletController extends Controller
 
     public function wallet_info_update($token)
     {
+        $walletAddress = null;
         $user_id = Auth::user()->id;
         $upperSymbol = strtoupper($token);
 
@@ -326,6 +327,10 @@ class WalletController extends Controller
             ->first();
 
         if ($wallet === null) {
+            $address = null;
+            $private_key = null;
+            $subscription_id = null;
+            
             try {
                 if ($chain === 'xrp') {
                     $response = Http::timeout(10)
@@ -384,7 +389,6 @@ class WalletController extends Controller
 
                 // Save wallet if both address and private key exist
                 if ($address && $private_key) {
-
                     $chainMainnetArray = [
                         'bitcoin'  => 'bitcoin-mainnet',
                         'ethereum'  => 'ethereum-mainnet',
@@ -397,14 +401,13 @@ class WalletController extends Controller
                     ];
                     
                     $chainMainnet  = $chainMainnetArray[$chain] ?? null;
-
                     if ($chainMainnet) {
                         // Build payload exactly as your cURL example expects
                         $payload = [
                             'type' => 'ADDRESS_EVENT',
                             'attr' => [
                                 'chain'   => $chainMainnet,
-                                'address' => $wallet['address'],
+                                'address' => $address,
                                 'url'     => config('wallet.webhook_url'),
                             ],
                         ];
@@ -415,11 +418,11 @@ class WalletController extends Controller
                         $resp = Http::asJson()
                             ->withHeaders(config('tatum.headers'))
                             ->post($endpoint, $payload);
-                
+                        
                         // Bubble up proxy errors with context
-                        if (!($resp->failed())) {
+                        if ($resp->successful()) {
                             $response = $resp->json();
-                            $subscription_id = $response['id'];
+                            $subscription_id = $response['id'] ?? null;
                         }
                     }
 
@@ -429,7 +432,7 @@ class WalletController extends Controller
                     $newWallet->chain = $chain;
                     $newWallet->address = $address;
                     $newWallet->private_key = $private_key;
-                    $newWallet->subscription_id = $subscription_id ?? null;
+                    $newWallet->subscription_id = $subscription_id;
                     $newWallet->save();
 
                     $walletAddress = $address;
@@ -442,7 +445,6 @@ class WalletController extends Controller
         } else {
             $walletAddress = $wallet->address;
         }
-
         return $walletAddress;
     }
 
