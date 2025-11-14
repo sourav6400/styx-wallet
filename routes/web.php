@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WalletController;
 use App\Http\Controllers\SettingsController;
@@ -84,6 +85,16 @@ Route::middleware(['auth', 'check.user.status', 'never.logout', 'pin.lock'])->gr
     Route::get('/my-wallet', [WalletController::class, 'my_wallet'])->name('wallet.landing');
     Route::get('/my-wallet/{symbol}', [WalletController::class, 'my_wallet'])->name('wallet.by_token');
     Route::get('/send/{symbol}', [WalletController::class, 'send_view'])->name('wallet.send_token_s1');
+    Route::get('/send-token/response', function (Request $request) {
+        $symbol = strtolower($request->query('symbol', 'btc'));
+        $allowedSymbols = ['btc', 'eth', 'ltc', 'usdt', 'xrp', 'doge', 'trx', 'bnb'];
+
+        if (!in_array($symbol, $allowedSymbols, true)) {
+            $symbol = 'btc';
+        }
+
+        return redirect()->route('wallet.send_token_s1', $symbol);
+    });
     Route::post('/send-token/response', [WalletController::class, 'send_token'])->name('wallet.send_token');
     Route::get('/receive/{symbol}', [WalletController::class, 'receive_token'])->name('wallet.receive_token');
 
