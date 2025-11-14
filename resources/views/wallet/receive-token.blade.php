@@ -50,7 +50,7 @@
                             @php
                                 $qrCode = QrCode::size(200)->generate($wallet_address);
                             @endphp
-                            <div class="qrCode" style="margin-left: 20rem;">{{ $qrCode }}</div>
+                            <div class="qrCode">{{ $qrCode }}</div>
                             {{-- <img class="qrCode" src="{{ asset('images/vector/vector9.png') }}" alt=""> --}}
                         </div>
                         <div class="row g-2 m-0">
@@ -93,6 +93,83 @@
     </div>
 
     <style>
+        #receivePopup1 .newAccount_popup_wrapper {
+            padding: 2.5rem 3rem;
+        }
+
+        #receivePopup1 .newAccountPopup_header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.2rem;
+        }
+
+        #receivePopup1 .newAccountPopup_header .vector {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+        }
+
+        #receivePopup1 .newAccountPopup_header .qrCode {
+            margin: 0.75rem auto 0;
+            width: min(220px, 70vw);
+        }
+
+        #receivePopup1 .newAccountPopup_header .qrCode svg {
+            width: 100%;
+            height: auto;
+        }
+
+        #receivePopup1 .form_input input {
+            font-size: 1.1rem;
+            padding: 1rem 1.25rem;
+        }
+
+        #receivePopup1 .form_btn button {
+            width: 100%;
+            justify-content: center;
+        }
+
+        @media (max-width: 992px) {
+            .myWallet_wrapper {
+                flex-direction: column;
+            }
+
+            .myWallet_sidebar,
+            .myWallet_body {
+                width: 100%;
+            }
+
+            #receivePopup1 .newAccount_popup_wrapper {
+                padding: 2rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            #receivePopup1 .newAccountPopup_header .vector {
+                width: 60px;
+                height: 60px;
+            }
+
+            #receivePopup1 .newAccountPopup_header h3 {
+                font-size: 1.6rem;
+            }
+
+            #receivePopup1 .newAccountPopup_header h6 {
+                font-size: 1rem;
+            }
+
+            #receivePopup1 .newAccountPopup_header .qrCode {
+                width: min(260px, 85vw);
+            }
+
+            #receivePopup1 .form_input input {
+                font-size: 1rem;
+                word-break: break-all;
+            }
+        }
+
         .custom-alert {
             position: fixed;
             top: 20px;
