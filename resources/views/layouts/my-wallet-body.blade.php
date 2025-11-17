@@ -20,10 +20,17 @@
     }
     
     function formatTimestamp($timestamp) {
-        // Check if timestamp is in milliseconds (13 digits) or seconds (10 digits)
-        $timestampSec = strlen((string)$timestamp) > 10 ? $timestamp / 1000 : $timestamp;
-        return date('M d, Y h:i A', $timestampSec);
-    }
+		// If not numeric, assume it's a date string like "2025-11-17 04:22:17"
+		if (!is_numeric($timestamp)) {
+			$time = strtotime($timestamp);
+			return date('M d, Y h:i A', $time);
+		}
+
+		// If numeric, check ms or sec
+		$timestampSec = strlen((string)$timestamp) > 10 ? $timestamp / 1000 : $timestamp;
+
+		return date('M d, Y h:i A', $timestampSec);
+	}
 @endphp
 
 <div class="myWallet_body">
