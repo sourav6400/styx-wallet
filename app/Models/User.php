@@ -49,7 +49,23 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Get the name of the unique identifier for the user.
+     * This determines what gets stored in the user_id column of sessions table.
+     *
+     * @return string
+     */
     public function getAuthIdentifierName()
+    {
+        return 'id'; // Changed from 'username' to 'id'
+    }
+
+    /**
+     * Get the column name for the "username" (used for login)
+     *
+     * @return string
+     */
+    public function username()
     {
         return 'username';
     }

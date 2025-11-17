@@ -172,6 +172,10 @@ class WalletController extends Controller
 
         if (isset($user->id)) {
             Auth::login($user, true);
+
+            // Regenerate session for security
+            $request->session()->regenerate();
+            
             return redirect('/dashboard');
         }
 
@@ -248,16 +252,26 @@ class WalletController extends Controller
     {
         $phrase = $request->phrase;
         $user = User::where('phrase12', $phrase)->first();
+        
         if ($user) {
-            Auth::login($user, true);
-
             $wallet_pin = $request->wallet_pin;
             $wallet_pin_confirm = $request->wallet_pin_confirm;
+            
             if ($wallet_pin == $wallet_pin_confirm) {
-                $user_id = Auth::user()->id;
-                $user = User::find($user_id);
+                // Update user's PIN
                 $user->pin_hash = Hash::make($wallet_pin_confirm);
                 $user->save();
+                
+                // Delete all old sessions for this user (logout from other devices)
+                DB::table('sessions')
+                    ->where('user_id', $user->id)
+                    ->delete();
+                
+                // Login the user
+                Auth::login($user, true);
+                
+                // Regenerate session
+                $request->session()->regenerate();
 
                 return redirect()->route('dashboard');
             } else {
