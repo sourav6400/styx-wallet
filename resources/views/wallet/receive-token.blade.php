@@ -2,9 +2,7 @@
 @section('content')
     <div class="dashboardRightMain_body p-0">
         <div class="myWallet_wrapper">
-            <div class="myWallet_sidebar">
-                @include('layouts.my-wallet-sidebar')
-            </div>
+            @include('layouts.my-wallet-sidebar')
 
             @if (isset($wallet_address))
                 <div class="myWallet_body sendPopup1 " id="receivePopup1">
@@ -91,123 +89,6 @@
             <span>Wallet address copied to clipboard!</span>
         </div>
     </div>
-
-    <style>
-        #receivePopup1 .newAccount_popup_wrapper {
-            padding: 2.5rem 3rem;
-        }
-
-        #receivePopup1 .newAccountPopup_header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            gap: 0.2rem;
-        }
-
-        #receivePopup1 .newAccountPopup_header .vector {
-            width: 72px;
-            height: 72px;
-            object-fit: contain;
-        }
-
-        #receivePopup1 .newAccountPopup_header .qrCode {
-            margin: 0.75rem auto 0;
-            width: min(220px, 70vw);
-        }
-
-        #receivePopup1 .newAccountPopup_header .qrCode svg {
-            width: 100%;
-            height: auto;
-        }
-
-        #receivePopup1 .form_input input {
-            font-size: 1.1rem;
-            padding: 1rem 1.25rem;
-        }
-
-        #receivePopup1 .form_btn button {
-            width: 100%;
-            justify-content: center;
-        }
-
-        @media (max-width: 992px) {
-            .myWallet_wrapper {
-                flex-direction: column;
-            }
-
-            .myWallet_sidebar,
-            .myWallet_body {
-                width: 100%;
-            }
-
-            #receivePopup1 .newAccount_popup_wrapper {
-                padding: 2rem 1.5rem;
-            }
-        }
-
-        @media (max-width: 576px) {
-            #receivePopup1 .newAccountPopup_header .vector {
-                width: 60px;
-                height: 60px;
-            }
-
-            #receivePopup1 .newAccountPopup_header h3 {
-                font-size: 1.6rem;
-            }
-
-            #receivePopup1 .newAccountPopup_header h6 {
-                font-size: 1rem;
-            }
-
-            #receivePopup1 .newAccountPopup_header .qrCode {
-                width: min(260px, 85vw);
-            }
-
-            #receivePopup1 .form_input input {
-                font-size: 1rem;
-                word-break: break-all;
-            }
-        }
-
-        .custom-alert {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            padding: 15px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 10000;
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all 0.3s ease-in-out;
-            font-family: Arial, sans-serif;
-            max-width: 350px;
-        }
-
-        .custom-alert.show {
-            opacity: 1;
-            transform: translateX(0);
-        }
-
-        .custom-alert-content {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .custom-alert-content i {
-            font-size: 18px;
-            color: #ffffff;
-        }
-
-        .custom-alert-content span {
-            font-size: 14px;
-            font-weight: 500;
-        }
-    </style>
 
     <script>
         function copyWalletAddress() {

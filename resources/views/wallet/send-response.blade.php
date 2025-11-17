@@ -2,9 +2,7 @@
 @section('content')
     <div class="dashboardRightMain_body p-0">
         <div class="myWallet_wrapper">
-            <div class="myWallet_sidebar">
-                @include('layouts.my-wallet-sidebar')
-            </div>
+            @include('layouts.my-wallet-sidebar')
             <div class="myWallet_body sendPopup1 ">
                 @if ($status == 'success')
                     <div class="newAccount_popup_wrapper position-relative">

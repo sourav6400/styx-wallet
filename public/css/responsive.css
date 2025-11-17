@@ -1,5 +1,212 @@
 /*
 ====================================
+Global Responsive Helpers
+====================================
+*/
+
+#receivePopup1 .newAccount_popup_wrapper {
+    padding: 2.5rem 3rem;
+    border-radius: 24px;
+}
+
+#receivePopup1 .newAccountPopup_header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.2rem;
+}
+
+#receivePopup1 .newAccountPopup_header .vector {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+}
+
+#receivePopup1 .newAccountPopup_header .qrCode {
+    margin: 0.75rem auto 0;
+    width: min(220px, 70vw);
+    text-align: center;
+}
+
+#receivePopup1 .newAccountPopup_header .qrCode svg {
+    width: 100%;
+    height: auto;
+}
+
+#receivePopup1 .form_input input {
+    font-size: 1.1rem;
+    padding: 1rem 1.25rem;
+}
+
+#receivePopup1 .form_btn button {
+    width: 100%;
+    justify-content: center;
+}
+
+.custom-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease-in-out;
+    font-family: Arial, sans-serif;
+    max-width: 350px;
+}
+
+.custom-alert.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.custom-alert-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.custom-alert-content i {
+    font-size: 18px;
+    color: #ffffff;
+}
+
+.custom-alert-content span {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.mobileWalletSidebar_toggle {
+    display: none;
+}
+
+.myWallet_balance.bitcoin>ul {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.myWallet_balance.bitcoin>ul li {
+    width: auto;
+    flex: 1 1 180px;
+    min-width: 150px;
+    max-width: 240px;
+}
+
+
+.coinAssetTable_wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.coinAssetTable_wrapper table {
+    width: 100%;
+    min-width: 760px;
+}
+
+@media screen and (max-width: 767px) {
+    .mobileWalletSidebar_toggle {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        margin: 10px 0 -10px;
+        background: transparent;
+        border: 0;
+        position: relative;
+        z-index: 10;
+    }
+
+    .mobileWalletSidebar_toggle button {
+        width: 100%;
+        border: 0;
+        background: #1B182E;
+        color: #fff;
+        font-size: 18px;
+        font-weight: 600;
+        padding: 12px 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .mobileWalletSidebar_toggle .toggle-icon {
+        transition: transform 0.3s ease;
+    }
+
+    .mobileWalletSidebar_toggle.is-open .toggle-icon {
+        transform: rotate(180deg);
+    }
+
+    .myWallet_sidebar.collapsible {
+        transition: max-height 0.35s ease, opacity 0.35s ease, padding 0.35s ease, margin 0.35s ease;
+        overflow: hidden;
+    }
+
+    .myWallet_sidebar.collapsible.collapsed {
+        max-height: 0;
+        opacity: 0;
+        pointer-events: none;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        margin: 0 !important;
+    }
+
+    .myWallet_sidebar.collapsible.expanded {
+        max-height: 70vh;
+        opacity: 1;
+        overflow-y: auto;
+        padding-top: 15px;
+        padding-bottom: 20px;
+    }
+
+    .dbrmh_right .notification-icon,
+    .dbrmh_right .notification-icon:hover {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+
+    .dbrmh_right .notification-container .dropdown {
+        box-shadow: none;
+        border: 1px solid rgba(42, 47, 68, 0.4);
+        background: rgba(22, 26, 39, 0.95);
+    }
+
+    .dbrmh_right .notification-container {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .dbrmh_right .notification-container .dropdown {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        bottom: auto;
+        transform: translate(-50%, -50%);
+        width: calc(100% - 40px);
+        max-width: 360px;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: rgba(22, 26, 39, 0.98);
+        border: 1px solid rgba(42, 47, 68, 0.5);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(6px);
+    }
+}
+
+/*
+====================================
 Medium Screen - Others
 ====================================
 */
@@ -7,6 +214,56 @@ Medium Screen - Others
 
     .transaction_filter .filter-button {
         font-size: 14px;
+    }
+
+    .dashboard_main {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .dashboard_main aside {
+        height: auto;
+        min-height: 100%;
+        padding: 40px 20px;
+    }
+
+    .dashboard_main .dashboardRight_col {
+        width: calc(100% - 210px);
+    }
+
+    .dashboardRightMain_header {
+        padding: 0 20px;
+    }
+
+    .dbrmh_right>ul {
+        padding-right: 20px;
+    }
+
+    .dashboardRightMain_body {
+        padding: 20px;
+        height: auto;
+        min-height: calc(100vh - 73px);
+    }
+
+    .page_content {
+        padding: 20px 15px;
+    }
+
+    .myWallet_wrapper {
+        gap: 20px;
+    }
+
+    .myWallet_body {
+        width: 100%;
+        padding: 0 20px 30px;
+    }
+
+    .newsContent_wrapper.balance>input.search {
+        max-width: 100%;
+    }
+
+    .coinAssetTable_wrapper {
+        padding: 0 15px;
     }
 
 
@@ -18,6 +275,16 @@ Small Screen - Tablate
 ====================================
 */
 @media screen and (min-width: 768px) and (max-width: 991px) {
+
+    .coinAssetTable_wrapper {
+        overflow-x: auto;
+    }
+
+    .coinAssetTable_wrapper table {
+        min-width: 720px;
+    }
+
+
 
 
     .dashboard_main aside {
@@ -125,6 +392,96 @@ Small Screen - Tablate
 
 
 
+
+    .page_content {
+        padding: 20px 12px;
+    }
+
+    .dashboard_main {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .dashboardRightMain_body {
+        padding: 12px;
+        height: auto;
+        min-height: calc(100vh - 60px);
+    }
+
+    .dashboardRightMain_header {
+        position: sticky;
+        top: 0;
+        z-index: 99;
+    }
+
+    .myWallet_wrapper {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .myWallet_sidebar {
+        width: 100%;
+        max-height: 320px;
+        overflow-y: auto;
+        border-radius: 18px;
+    }
+
+    .myWallet_sidebar>input[type='search'] {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .myWallet_body {
+        width: 100%;
+        padding: 0 10px 30px;
+    }
+
+    .myWallet_sidebar_item ul {
+        padding: 12px 18px;
+    }
+
+    .sendCoin_cardv2 {
+        padding: 30px 24px;
+    }
+
+    .sendCoin_cardv2>h4 {
+        font-size: 26px;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .sendCoin_cardv2 .row {
+        row-gap: 18px;
+    }
+
+    .sendCoin_cardv2 .form_btn button {
+        width: 100%;
+        max-width: 240px;
+    }
+
+    .sendPopup1 .newAccount_popup_wrapper {
+        padding: 30px 22px;
+    }
+
+    #receivePopup1 .newAccount_popup_wrapper {
+        padding: 2rem 1.5rem;
+    }
+
+    #receivePopup1 .form_input input {
+        font-size: 1rem;
+    }
+
+    .transaction_title.v3 {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .transaction_dropdown_v3 {
+        width: 100%;
+        max-width: 100%;
+    }
 
 }
 
@@ -284,6 +641,105 @@ Small Screen - Mobile
         width: 100%;
         max-width: 450px;
     }
+
+    .page_content {
+        padding: 15px 10px;
+    }
+
+    .dashboard_main {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .dashboardRightMain_body {
+        padding: 10px;
+        height: auto;
+    }
+
+    .dashboardRightMain_header {
+        position: sticky;
+        top: 0;
+        z-index: 98;
+    }
+
+    .myWallet_wrapper {
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .myWallet_sidebar {
+        width: 100%;
+        max-height: 280px;
+        overflow-y: auto;
+        border-radius: 16px;
+        padding-bottom: 15px;
+    }
+
+    .myWallet_body {
+        width: 100%;
+        padding: 0 5px 25px;
+    }
+
+    .myWallet_sidebar_item ul {
+        padding: 10px 14px;
+    }
+
+    .myWallet_sidebar_item>button.addAssets {
+        width: 100%;
+    }
+
+    .sendCoin_cardv2 {
+        padding: 25px 18px;
+    }
+
+    .sendCoin_cardv2>h4 {
+        font-size: 22px;
+        gap: 8px;
+        flex-direction: column;
+    }
+
+    .sendCoin_cardv2 .form_input input {
+        font-size: 16px;
+    }
+
+    .sendCoin_cardv2 .avlAsset_btn button {
+        margin-left: 0;
+        margin-top: 15px;
+    }
+
+    .sendCoin_cardv2 .form_btn button {
+        max-width: 100%;
+    }
+
+    .sendPopup1 .newAccount_popup_wrapper {
+        padding: 25px 16px;
+    }
+
+    .newAccountPopup_header .qrCode {
+        width: min(260px, 85vw);
+    }
+
+    #receivePopup1 .newAccount_popup_wrapper {
+        padding: 1.9rem 1.3rem;
+    }
+
+    #receivePopup1 .form_input input {
+        word-break: break-all;
+    }
+
+    .transaction_dropdown_v3 {
+        width: 100%;
+    }
+
+    .notification-container {
+        position: static;
+    }
+
+    .myWallet_balance.bitcoin>ul li {
+        flex: 1 1 calc(50% - 12px);
+        max-width: calc(50% - 12px);
+    }
+
 
 }
 
@@ -660,7 +1116,13 @@ Xtra Small Screen - Small Mobile
     }
 
     .myWallet_sidebar {
-        display: none;
+        display: block;
+        width: 100%;
+        max-height: 280px;
+        overflow-y: auto;
+        border-radius: 16px;
+        background: #11101B;
+        padding: 15px 12px 20px;
     }
 
     .myWallet_body {
@@ -776,6 +1238,128 @@ Xtra Small Screen - Small Mobile
     .transaction_header .col-sm-5 {
         width: 100%;
         order: 1;
+    }
+
+
+    .page_content {
+        padding: 12px 8px;
+    }
+
+    .dashboard_main {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .dashboardRightMain_body {
+        padding: 8px;
+    }
+
+    .dashboardRightMain_header {
+        position: sticky;
+        top: 0;
+        z-index: 98;
+        padding: 0 10px;
+    }
+
+    .dbrmh_right>ul {
+        padding-right: 0;
+        gap: 8px;
+    }
+
+    .myWallet_wrapper {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .myWallet_sidebar {
+        width: 100%;
+        max-height: 240px;
+        overflow-y: auto;
+        border-radius: 15px;
+    }
+
+    .myWallet_sidebar_item ul {
+        padding: 10px 12px;
+    }
+
+    .myWallet_sidebar_item ul li h5,
+    .myWallet_sidebar_item ul li h6 {
+        font-size: 14px;
+    }
+
+    .myWallet_body {
+        width: 100%;
+        padding: 0;
+    }
+
+    .sendCoin_cardv2 {
+        padding: 20px 14px;
+    }
+
+    .sendCoin_cardv2>h4 {
+        font-size: 20px;
+        text-align: left;
+        gap: 6px;
+    }
+
+    .sendCoin_cardv2 .form_input label {
+        font-size: 15px;
+    }
+
+    .sendCoin_cardv2 .form_input>span {
+        font-size: 13px;
+        top: 32px;
+    }
+
+    .sendCoin_cardv2 .row {
+        margin-bottom: 20px;
+    }
+
+    .sendCoin_cardv2 .available_assset h4 {
+        font-size: 16px;
+    }
+
+    .sendCoin_cardv2 .form_btn button {
+        font-size: 18px;
+        max-width: 100%;
+    }
+
+    #receivePopup1 .newAccount_popup_wrapper {
+        padding: 1.6rem 1.1rem;
+    }
+
+    #receivePopup1 .newAccountPopup_header .vector {
+        width: 52px;
+        height: 52px;
+    }
+
+    #receivePopup1 .newAccountPopup_header h3 {
+        font-size: 1.35rem;
+    }
+
+    #receivePopup1 .newAccountPopup_header h6 {
+        font-size: 0.95rem;
+    }
+
+    #receivePopup1 .newAccountPopup_header .qrCode {
+        width: min(230px, 90vw);
+    }
+
+    #receivePopup1 .form_input input {
+        font-size: 0.95rem;
+    }
+
+    .transaction_title.v3 {
+        gap: 10px;
+    }
+
+    .notification-container {
+        position: static;
+    }
+
+    .myWallet_balance.bitcoin>ul li {
+        flex: 1 1 100%;
+        max-width: 100%;
     }
 
 }

@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}">
 
     <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
 
 
     <style>
@@ -448,13 +449,30 @@
         <aside class="mobile_sidebar">
             <div class="sideMenu_content pt-0">
                 <ul>
-                    <li><a href="{{ route('dashboard') }}" class="active"><i class="fa-solid fa-grid-2"></i>
-                            Dashboard</a></li>
-                    <li><a href="{{ route('wallet.landing') }}"><i class="fa-solid fa-wallet"></i> My wallet</a></li>
+                    <li>
+                        <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                            <i class="fa-solid fa-grid-2"></i>
+                            Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('wallet.landing') }}" class="{{ request()->routeIs('wallet.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-wallet"></i> My wallet
+                        </a>
+                    </li>
                     <li><a href="#"><i class="fa-regular fa-shuffle"></i> Swap</a></li>
-                    <li><a href="{{ route('transactions', ['symbol' => 'btc']) }}"><i class="fa-solid fa-file-invoice"></i>
-                            Transactions</a></li>
-                    <li><a href="{{ route('settings.backup_seed') }}"><i class="fa-solid fa-gear"></i> Settings</a>
+                    <li>
+                        <a href="{{ route('transactions', ['symbol' => 'btc']) }}"
+                            class="{{ request()->routeIs('transactions') ? 'active' : '' }}">
+                            <i class="fa-solid fa-file-invoice"></i>
+                            Transactions
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('settings.backup_seed') }}"
+                            class="{{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                            <i class="fa-solid fa-gear"></i> Settings
+                        </a>
                     </li>
                 </ul>
             </div>
@@ -500,6 +518,8 @@
     {{-- <script src="{{ asset('js/main.js') }}"></script> --}}
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 
     <script>
         window.addEventListener("load", function() {
@@ -508,8 +528,31 @@
         });
 
         $(document).ready(function() {
-            $('#dataTable').DataTable();
-            $('#dataTable_filter input').attr('placeholder', 'Search here...');
+            const $dataTable = $('#dataTable');
+
+            if ($dataTable.length) {
+                const tableInstance = $dataTable.DataTable({
+                    responsive: false,
+                    scrollX: true,
+                    autoWidth: false,
+                    lengthChange: false,
+                    columnDefs: [
+                        {
+                            targets: '_all',
+                            className: 'dt-nowrap'
+                        }
+                    ]
+                });
+
+                const $filterInput = $('#dataTable_filter input');
+                if ($filterInput.length) {
+                    $filterInput.attr('placeholder', 'Search here...');
+                }
+
+                window.addEventListener('resize', () => {
+                    tableInstance.columns.adjust();
+                });
+            }
         });
 
         // Lock Controll

@@ -5,7 +5,6 @@
             @include('layouts.my-wallet-sidebar')
 
             @include('layouts.my-wallet-body')
-            
         </div>
     </div>
 @endsection
