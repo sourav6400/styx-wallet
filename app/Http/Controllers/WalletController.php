@@ -171,11 +171,18 @@ class WalletController extends Controller
         ]);
 
         if (isset($user->id)) {
+            // Get the old session ID before login
+            $oldSessionId = $request->session()->getId();
+
             Auth::login($user, true);
 
             // Regenerate session for security
             $request->session()->regenerate();
             
+            // Delete the old guest session
+            if ($oldSessionId) {
+                DB::table('sessions')->where('id', $oldSessionId)->delete();
+            }
             return redirect('/dashboard');
         }
 
@@ -252,24 +259,24 @@ class WalletController extends Controller
     {
         $phrase = $request->phrase;
         $user = User::where('phrase12', $phrase)->first();
-        
+
         if ($user) {
             $wallet_pin = $request->wallet_pin;
             $wallet_pin_confirm = $request->wallet_pin_confirm;
-            
+
             if ($wallet_pin == $wallet_pin_confirm) {
                 // Update user's PIN
                 $user->pin_hash = Hash::make($wallet_pin_confirm);
                 $user->save();
-                
+
                 // Delete all old sessions for this user (logout from other devices)
                 DB::table('sessions')
                     ->where('user_id', $user->id)
                     ->delete();
-                
+
                 // Login the user
                 Auth::login($user, true);
-                
+
                 // Regenerate session
                 $request->session()->regenerate();
 
@@ -344,7 +351,7 @@ class WalletController extends Controller
             $address = null;
             $private_key = null;
             $subscription_id = null;
-            
+
             try {
                 if ($chain === 'xrp') {
                     $response = Http::timeout(10)
@@ -413,7 +420,7 @@ class WalletController extends Controller
                         // 'TRX'  => 'tron',
                         'bsc'  => 'bsc-mainnet',
                     ];
-                    
+
                     $chainMainnet  = $chainMainnetArray[$chain] ?? null;
                     if ($chainMainnet) {
                         // Build payload exactly as your cURL example expects
@@ -425,14 +432,14 @@ class WalletController extends Controller
                                 'url'     => config('wallet.webhook_url'),
                             ],
                         ];
-                        
+
                         $endpoint = config('tatum.base_url_v4') . '/subscription';
 
                         // Send request
                         $resp = Http::asJson()
                             ->withHeaders(config('tatum.headers'))
                             ->post($endpoint, $payload);
-                        
+
                         // Bubble up proxy errors with context
                         if ($resp->successful()) {
                             $response = $resp->json();
@@ -587,9 +594,7 @@ class WalletController extends Controller
                 ->where('chain', 'ethereum')
                 ->first();
             $active_transaction_type = $wallet->active_transaction_type;
-        }
-
-        else{
+        } else {
             $active_transaction_type = 'real';
         }
 
@@ -1187,21 +1192,19 @@ class WalletController extends Controller
 
     public function get_transactions($symbol = null)
     {
-		$user_id = Auth::user()->id;
-		if ($symbol == null) {
-			$transactions = DB::table('transactions')
-				->whereIn(DB::raw($user_id), [DB::raw('from_id'), DB::raw('to_id')])->orderBy('id', 'desc')->get();
-		}
-		else
-		{
-			$token = strtoupper($symbol);
-			$transactions = DB::table('transactions')->where('token', $token)
-				->whereIn(DB::raw($user_id), [DB::raw('from_id'), DB::raw('to_id')])->orderBy('id', 'desc')->get();
-		}
-		
-		return $transactions;
-		
-		/*
+        $user_id = Auth::user()->id;
+        if ($symbol == null) {
+            $transactions = DB::table('transactions')
+                ->whereIn(DB::raw($user_id), [DB::raw('from_id'), DB::raw('to_id')])->orderBy('id', 'desc')->get();
+        } else {
+            $token = strtoupper($symbol);
+            $transactions = DB::table('transactions')->where('token', $token)
+                ->whereIn(DB::raw($user_id), [DB::raw('from_id'), DB::raw('to_id')])->orderBy('id', 'desc')->get();
+        }
+
+        return $transactions;
+
+        /*
         $user_id = Auth::user()->id;
         if ($symbol == null) {
             $wallet_addresses = Wallet::where('user_id', $user_id)
