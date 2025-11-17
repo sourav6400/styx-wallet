@@ -294,14 +294,12 @@ class WalletController extends Controller
     public function dashboard(BalanceService $balanceService)
     {
         $title = "Dashboard";
-        $tokens = $balanceService->getFilteredTokens();
-        $totalUsd = 0;
-        $totalCoin = 0;
-        foreach ($tokens as $key => $token) {
-            $totalCoin = $totalCoin + $token['tokenBalance'];
-            $totalUsd = $totalUsd + $token['tokenBalance'] * $token['usdUnitPrice'];
-        }
-        return view('wallet.dashboard', compact('title', 'tokens', 'totalCoin', 'totalUsd'));
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
+
+        return view('wallet.dashboard', compact('title', 'tokens', 'totalCrypto', 'totalUsd'));
     }
 
     /**
@@ -309,14 +307,17 @@ class WalletController extends Controller
      */
     public function my_wallet(BalanceService $balanceService, $symbol = null)
     {
-        $tokens = $balanceService->getFilteredTokens();
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
 
         if ($symbol == null)
             $symbol = "btc";
         $walletAddress = $this->wallet_info_update($symbol);
         $title = "My Wallet";
         $transfers = $this->get_transactions($symbol);
-        return view('wallet.my-wallet', compact('title', 'tokens', 'symbol', 'transfers', 'walletAddress'));
+        return view('wallet.my-wallet', compact('title', 'tokens', 'totalUsd', 'totalCrypto', 'symbol', 'transfers', 'walletAddress'));
     }
 
     public function wallet_info_update($token)
@@ -471,8 +472,11 @@ class WalletController extends Controller
 
     public function send_view(BalanceService $balanceService, $symbol)
     {
-        $tokens = $balanceService->getFilteredTokens();
         $title = "Send Token";
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
         $gasPriceGwei = 0;
         $gasPriceUsd = 0;
         $insufficient_gas_msg = null;
@@ -598,7 +602,7 @@ class WalletController extends Controller
             $active_transaction_type = 'real';
         }
 
-        return view('wallet.send-token', compact('title', 'tokens', 'symbol', 'gasPriceGwei', 'gasPriceUsd', 'insufficient_gas_msg', 'active_transaction_type'));
+        return view('wallet.send-token', compact('title', 'tokens', 'totalUsd', 'totalCrypto', 'symbol', 'gasPriceGwei', 'gasPriceUsd', 'insufficient_gas_msg', 'active_transaction_type'));
     }
 
     // New Send Token Section :: Start
@@ -793,7 +797,10 @@ class WalletController extends Controller
         }
 
         // Get updated balances
-        $tokens = $balanceService->getFilteredTokens();
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
         $filteredToken = collect($tokens)->firstWhere('symbol', $token);
         $realBalanceAfterSending = $filteredToken['realBalance'] ?? 0;
         $fakeBalanceAfterSending = $filteredToken['fakeBalance'] ?? 0;
@@ -826,6 +833,8 @@ class WalletController extends Controller
             'message',
             'details',
             'tokens',
+            'totalUsd',
+            'totalCrypto',
             'symbol'
         ));
     }
@@ -1175,19 +1184,25 @@ class WalletController extends Controller
         $user_id = Auth::user()->id;
         $wallet = Wallet::where('user_id', $user_id)->where('chain', $chain)->first();
         $wallet_address = $wallet->address ?? null;
-        $tokens = $balanceService->getFilteredTokens();
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
         $title = "Receive Crypto";
-        return view('wallet.receive-token', compact('title', 'symbol', 'tokens', 'wallet_address'));
+        return view('wallet.receive-token', compact('title', 'symbol', 'tokens', 'totalUsd', 'totalCrypto', 'wallet_address'));
     }
 
     public function transactions(BalanceService $balanceService, $symbol = null)
     {
         $title = "Transactions";
-        $tokens = $balanceService->getFilteredTokens();
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
         if ($symbol == null)
             $symbol = "btc";
         $transfers = $this->get_transactions($symbol);
-        return view('wallet.transactions', compact('title', 'tokens', 'symbol', 'transfers'));
+        return view('wallet.transactions', compact('title', 'tokens', 'totalUsd', 'totalCrypto', 'symbol', 'transfers'));
     }
 
     public function get_transactions($symbol = null)

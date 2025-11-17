@@ -8,6 +8,8 @@ use App\Services\BalanceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Artisan;
 
 class SettingsController extends Controller
 {
@@ -16,8 +18,11 @@ class SettingsController extends Controller
         $mnemonic12 = Auth::user()->phrase12;
         $words = explode(" ", $mnemonic12);
         $title = "Backup Seed";
-        $tokens = $balanceService->getFilteredTokens();
-        return view('settings.backup-seed', compact('title', 'tokens', 'mnemonic12', 'words'));
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
+        return view('settings.backup-seed', compact('title', 'tokens', 'totalUsd', 'totalCrypto', 'mnemonic12', 'words'));
     }
     public function checkPin(Request $request)
     {
@@ -36,8 +41,11 @@ class SettingsController extends Controller
     public function change_pin_view(BalanceService $balanceService)
     {
         $title = "Change PIN";
-        $tokens = $balanceService->getFilteredTokens();
-        return view('settings.change-pin', compact('title', 'tokens'));
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
+        return view('settings.change-pin', compact('title', 'tokens', 'totalUsd', 'totalCrypto'));
     }
     public function store_new_pin(Request $request)
     {
@@ -58,27 +66,57 @@ class SettingsController extends Controller
     public function faq(BalanceService $balanceService)
     {
         $title = "FAQs";
-        $tokens = $balanceService->getFilteredTokens();
-        return view('settings.faq', compact('title', 'tokens'));
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
+        return view('settings.faq', compact('title', 'tokens', 'totalUsd', 'totalCrypto'));
     }
     public function terms_conditions(BalanceService $balanceService)
     {
         $title = "Terms & Conditions";
-        $tokens = $balanceService->getFilteredTokens();
-        return view('settings.terms-conditions', compact('title', 'tokens'));
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
+        return view('settings.terms-conditions', compact('title', 'tokens', 'totalUsd', 'totalCrypto'));
     }
     public function support(BalanceService $balanceService)
     {
         $title = "Support";
-        $tokens = $balanceService->getFilteredTokens();
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
         $user_id = Auth::user()->id;
-        return view('settings.support', compact('title', 'tokens', 'user_id'));
+        return view('settings.support', compact('title', 'tokens', 'totalUsd', 'totalCrypto', 'user_id'));
     }
     public function support_success(BalanceService $balanceService)
     {
         $title = "Support Success";
-        $tokens = $balanceService->getFilteredTokens();
+        $balanceData = $balanceService->getFilteredTokens();
+        $tokens = $balanceData['tokens'];
+        $totalUsd = number_format((float) $balanceData['totalUsd'], 2, '.', ',');
+        $totalCrypto = number_format((float) $balanceData['totalCrypto'], 8, '.', ',');
         $user_id = Auth::user()->id;
-        return view('success', compact('title', 'tokens', 'user_id'));
+        return view('success', compact('title', 'tokens', 'totalUsd', 'totalCrypto', 'user_id'));
+    }
+
+    public function system_cleanup()
+    {
+        try {
+            // Clear application cache
+            Cache::flush();
+            
+            // Clear Laravel caches
+            Artisan::call('cache:clear');
+            Artisan::call('config:clear');
+            Artisan::call('route:clear');
+            Artisan::call('view:clear');
+            
+            return redirect()->back()->with('success_msg', 'System cache cleared successfully!');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error_msg', 'Failed to clear cache: ' . $e->getMessage());
+        }
     }
 }

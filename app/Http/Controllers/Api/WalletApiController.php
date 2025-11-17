@@ -256,10 +256,10 @@ class WalletApiController extends Controller
         try {
             $tokens = $balanceService->getFilteredTokens();
             $totalUsd = 0;
-            $totalCoin = 0;
+            $totalCrypto = 0;
 
             foreach ($tokens as $token) {
-                $totalCoin += $token['tokenBalance'];
+                $totalCrypto += $token['tokenBalance'];
                 $totalUsd += $token['tokenBalance'] * $token['usdUnitPrice'];
             }
 
@@ -267,7 +267,7 @@ class WalletApiController extends Controller
                 'success' => true,
                 'data' => [
                     'tokens' => $tokens,
-                    'total_coin' => $totalCoin,
+                    'total_coin' => $totalCrypto,
                     'total_usd' => $totalUsd
                 ]
             ]);

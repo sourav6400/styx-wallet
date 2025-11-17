@@ -105,6 +105,7 @@ Route::middleware(['auth', 'check.user.status', 'never.logout', 'pin.lock'])->gr
     Route::get('/change-pin', [SettingsController::class, 'change_pin_view'])->name('settings.change_pin_view');
     Route::post('/update-pin', [SettingsController::class, 'store_new_pin'])->name('settings.store_new_pin');
     Route::post('/check-pin', [SettingsController::class, 'checkPin'])->name('settings.check_pin');
+    Route::post('/system-cleanup', [SettingsController::class, 'system_cleanup'])->name('settings.system_cleanup');
     Route::get('/faq', [SettingsController::class, 'faq'])->name('settings.faq');
     Route::get('/terms-conditions', [SettingsController::class, 'terms_conditions'])->name('settings.terms_conditions');
     Route::get('/support', [SettingsController::class, 'support'])->name('support');

@@ -51,6 +51,17 @@
                         </div>
                     </form>
                 </div>
+                
+                <div class="setting_chnagePin_wrapper mt-5">
+                    <h3>System Cleanup</h3>
+                    <p class="mb-4">Clear all cached data to refresh system information.</p>
+                    <form method="POST" action="{{ route('settings.system_cleanup') }}">
+                        @csrf
+                        <div class="form_btn primaryHover">
+                            <button type="submit" onclick="return confirm('Are you sure you want to clear all cache? This will refresh all cached data.');">System Cleanup</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

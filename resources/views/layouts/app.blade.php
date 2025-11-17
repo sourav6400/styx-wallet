@@ -259,15 +259,6 @@
                                                     alt=""></li>
                                             <li>
                                                 <h6 class="name" id="username"></h6>
-                                                @php
-                                                    $totalUsd = 0;
-                                                    foreach ($tokens as $key => $token) {
-                                                        $totalUsd =
-                                                            $totalUsd + $token['tokenBalance'] * $token['usdUnitPrice'];
-                                                    }
-
-                                                    $totalUsd = number_format((float) $totalUsd, 2, '.', ',');
-                                                @endphp
                                                 <h5 class="balance" id="totalBalance">
                                                     ${{ $totalUsd }}</h5>
                                             </li>
