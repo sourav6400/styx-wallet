@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class TransactionAlertController extends Controller
 {
@@ -166,6 +167,16 @@ class TransactionAlertController extends Controller
                     $transaction->timestamp = now()->toDateTimeString();
                     $transaction->source = 'webhook';
                     $transaction->save();
+                    
+                    // Clear user-specific cache for both from_id and to_id
+                    if($transaction->from_id) {
+                        Cache::forget("fake_balance_{$transaction->from_id}");
+                        Cache::forget("filtered_tokens_{$transaction->from_id}");
+                    }
+                    if($transaction->to_id && $transaction->to_id != $transaction->from_id) {
+                        Cache::forget("fake_balance_{$transaction->to_id}");
+                        Cache::forget("filtered_tokens_{$transaction->to_id}");
+                    }
                 }
                 elseif($transaction && $transaction->to_address == NULL)
                 {
@@ -174,6 +185,16 @@ class TransactionAlertController extends Controller
                     $transaction->to_id = $receiver_wallet->user_id ?? null;
                     $transaction->to_address = $receiver;
                     $transaction->save();
+                    
+                    // Clear user-specific cache for both from_id and to_id
+                    if($transaction->from_id) {
+                        Cache::forget("fake_balance_{$transaction->from_id}");
+                        Cache::forget("filtered_tokens_{$transaction->from_id}");
+                    }
+                    if($transaction->to_id && $transaction->to_id != $transaction->from_id) {
+                        Cache::forget("fake_balance_{$transaction->to_id}");
+                        Cache::forget("filtered_tokens_{$transaction->to_id}");
+                    }
                 }
             }
 
