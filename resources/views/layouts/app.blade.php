@@ -9,6 +9,7 @@
     <meta name="keywords" content="">
     <meta name="decription" content="">
     <meta name="designer" content="">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!-- Title -->
     <title>{{ $title }} - {{ config('app.name') }}</title>
@@ -518,6 +519,16 @@
             // document.getElementById("content").style.display = "block";
         });
 
+        // Setup CSRF token for all AJAX requests
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+
+        // Make CSRF token available globally for fetch API
+        window.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
         $(document).ready(function() {
             const $dataTable = $('#dataTable');
 
@@ -567,9 +578,18 @@
                 // Only lock if browser/tab is really closing
                 localStorage.setItem('app.locked', '1');
 
-                navigator.sendBeacon("{{ route('lock.store') }}", new URLSearchParams({
-                    _token: "{{ csrf_token() }}"
-                }));
+                // Use fetch with keepalive instead of sendBeacon for proper CSRF handling
+                fetch("{{ route('lock.store') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': "{{ csrf_token() }}",
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        _token: "{{ csrf_token() }}"
+                    }),
+                    keepalive: true
+                }).catch(() => {}); // Ignore errors on page unload
             }
         });
 

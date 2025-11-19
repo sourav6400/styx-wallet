@@ -35,8 +35,11 @@
                     </tr>
                     @foreach ($tokens as $token)
                         @php
-                            if ($totalCrypto > 0) {
-                                $portfolio = ($token['tokenBalance'] / $totalCrypto) * 100;
+                            $tokenBalance = (float) ($token['tokenBalance'] ?? 0);
+                            $totalCryptoValue = (float) ($totalCrypto ?? 0);
+                            
+                            if ($totalCryptoValue > 0) {
+                                $portfolio = ($tokenBalance / $totalCryptoValue) * 100;
                             } else {
                                 $portfolio = 0; // avoid division by zero
                             }
